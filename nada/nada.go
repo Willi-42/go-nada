@@ -1,0 +1,5 @@
+package nada
+
+func Foo() {
+
+}
