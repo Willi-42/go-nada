@@ -1,11 +1,12 @@
 package nada
 
 type packetEvent struct {
-	lost      bool
-	marked    bool
-	size      uint64
-	tsRecived uint64
-	lossRange uint64 // for lost packets in a range
+	lost         bool
+	marked       bool
+	queueBuildup bool
+	size         uint64
+	tsRecived    uint64
+	lossRange    uint64 // for lost packets in a range
 }
 
 // LogWinQueue
@@ -21,6 +22,7 @@ type LogWinQueue struct {
 	numberMarkedPackets uint64
 	numberPacketArrived uint64
 	accumulatedSize     uint64
+	numberQueueBuildup  uint64 // number of times a queue buildup was detected
 }
 
 // NewLogWinQueue creates a new logging window queue.
@@ -36,29 +38,47 @@ func (q *LogWinQueue) addLostEvent(ts, lossRange uint64) {
 	q.elements = append(q.elements, packetEvent{lost: true, tsRecived: ts, lossRange: lossRange})
 }
 
-func (q *LogWinQueue) addPacketEvent(pn uint64, tsRecived uint64, size uint64, marked bool) {
+func (q *LogWinQueue) addPacketEvent(
+	pn uint64,
+	tsRecived uint64,
+	size uint64,
+	marked bool,
+	queueBuildup bool,
+) {
 	q.elements = append(q.elements, packetEvent{
-		lost:      false,
-		marked:    marked,
-		size:      size,
-		tsRecived: tsRecived,
+		lost:         false,
+		marked:       marked,
+		size:         size,
+		tsRecived:    tsRecived,
+		queueBuildup: queueBuildup,
 	})
 }
 
-func (q *LogWinQueue) NewMediaPacketRecieved(pn uint64, tsRecived uint64, size uint64, marked bool) {
+func (q *LogWinQueue) NewMediaPacketRecieved(
+	pn uint64,
+	tsRecived uint64,
+	size uint64,
+	marked bool,
+	queueBuildup bool,
+) {
 	if pn <= q.lastPn && pn != 0 {
 		// packet arravied out of order
 		// TODO: duplicated packet
+		// TODO: should handle queue build up
 		return
 	}
 
-	q.addPacketEvent(pn, tsRecived, size, marked)
+	q.addPacketEvent(pn, tsRecived, size, marked, queueBuildup)
 	q.accumulatedSize += size
 	q.numberPacketArrived++
 	q.numberOfPacketsSinceLastLoss++
 
 	if marked {
 		q.numberMarkedPackets++
+	}
+
+	if queueBuildup {
+		q.numberQueueBuildup++
 	}
 
 	// skip gap calc for first packet
@@ -97,6 +117,10 @@ func (q *LogWinQueue) updateStats(currentTime uint64) {
 
 			if event.marked {
 				q.numberMarkedPackets--
+			}
+
+			if event.queueBuildup {
+				q.numberQueueBuildup--
 			}
 
 			q.numberPacketArrived--

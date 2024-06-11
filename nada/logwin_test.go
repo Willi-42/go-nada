@@ -11,13 +11,14 @@ var _ = Describe("LogWin", func() {
 	Context("test", func() {
 		It("1 packets no update", func() {
 			logWin := NewLogWinQueue(10)
-			logWin.NewMediaPacketRecieved(0, 0, 12, false)
+			logWin.NewMediaPacketRecieved(0, 0, 12, false, false)
 			Expect(logWin.lastPn).To(Equal(uint64(0)))
 
 			Expect(logWin.numberPacketArrived).To(Equal(uint64(1)))
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(0)))
 			Expect(logWin.accumulatedSize).To(Equal(uint64(12)))
 			Expect(logWin.numberLostPackets).To(BeZero())
+			Expect(logWin.numberQueueBuildup).To(BeZero())
 
 			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(1)))
 			Expect(logWin.lastPn).To(Equal(uint64(0)))
@@ -26,14 +27,15 @@ var _ = Describe("LogWin", func() {
 		It("3 packets no update", func() {
 			logWin := NewLogWinQueue(10)
 
-			logWin.NewMediaPacketRecieved(0, 0, 12, false)
-			logWin.NewMediaPacketRecieved(1, 1, 8, true)
-			logWin.NewMediaPacketRecieved(2, 5, 20, false)
+			logWin.NewMediaPacketRecieved(0, 0, 12, false, false)
+			logWin.NewMediaPacketRecieved(1, 1, 8, true, false)
+			logWin.NewMediaPacketRecieved(2, 5, 20, false, false)
 
 			Expect(logWin.numberPacketArrived).To(Equal(uint64(3)))
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
 			Expect(logWin.accumulatedSize).To(Equal(uint64(40)))
 			Expect(logWin.numberLostPackets).To(BeZero())
+			Expect(logWin.numberQueueBuildup).To(BeZero())
 
 			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(3)))
 			Expect(logWin.lastPn).To(Equal(uint64(2)))
@@ -42,14 +44,15 @@ var _ = Describe("LogWin", func() {
 		It("3 packets with gap", func() {
 			logWin := NewLogWinQueue(10)
 
-			logWin.NewMediaPacketRecieved(0, 0, 12, false)
-			logWin.NewMediaPacketRecieved(2, 1, 8, true)
-			logWin.NewMediaPacketRecieved(6, 5, 20, false)
+			logWin.NewMediaPacketRecieved(0, 0, 12, false, false)
+			logWin.NewMediaPacketRecieved(2, 1, 8, true, false)
+			logWin.NewMediaPacketRecieved(6, 5, 20, false, false)
 
 			Expect(logWin.numberPacketArrived).To(Equal(uint64(3)))
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
 			Expect(logWin.accumulatedSize).To(Equal(uint64(40)))
 			Expect(logWin.numberLostPackets).To(Equal(uint64(4)))
+			Expect(logWin.numberQueueBuildup).To(BeZero())
 
 			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(1)))
 			Expect(logWin.lastPn).To(Equal(uint64(6)))
@@ -58,18 +61,19 @@ var _ = Describe("LogWin", func() {
 		It("packets out of order", func() {
 			logWin := NewLogWinQueue(10)
 
-			logWin.NewMediaPacketRecieved(0, 0, 12, false)
-			logWin.NewMediaPacketRecieved(2, 1, 8, true)
-			logWin.NewMediaPacketRecieved(6, 5, 20, false)
+			logWin.NewMediaPacketRecieved(0, 0, 12, false, false)
+			logWin.NewMediaPacketRecieved(2, 1, 8, true, false)
+			logWin.NewMediaPacketRecieved(6, 5, 20, false, false)
 
-			logWin.NewMediaPacketRecieved(5, 5, 20, false)
-			logWin.NewMediaPacketRecieved(4, 5, 20, false)
-			logWin.NewMediaPacketRecieved(6, 5, 20, false)
+			logWin.NewMediaPacketRecieved(5, 5, 20, false, false)
+			logWin.NewMediaPacketRecieved(4, 5, 20, false, false)
+			logWin.NewMediaPacketRecieved(6, 5, 20, false, false)
 
 			Expect(logWin.numberPacketArrived).To(Equal(uint64(3)))
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
 			Expect(logWin.accumulatedSize).To(Equal(uint64(40)))
 			Expect(logWin.numberLostPackets).To(Equal(uint64(4)))
+			Expect(logWin.numberQueueBuildup).To(BeZero())
 
 			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(1)))
 			Expect(logWin.lastPn).To(Equal(uint64(6)))
@@ -81,14 +85,15 @@ var _ = Describe("LogWin", func() {
 
 			Expect(logWin.sizeInMicroS).To(Equal(uint64(10)))
 
-			logWin.NewMediaPacketRecieved(201, 100, 12, false)
-			logWin.NewMediaPacketRecieved(202, 101, 8, true)
-			logWin.NewMediaPacketRecieved(203, 105, 20, false)
+			logWin.NewMediaPacketRecieved(201, 100, 12, false, false)
+			logWin.NewMediaPacketRecieved(202, 101, 8, true, false)
+			logWin.NewMediaPacketRecieved(203, 105, 20, false, false)
 
 			Expect(logWin.numberPacketArrived).To(Equal(uint64(3)))
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
 			Expect(logWin.accumulatedSize).To(Equal(uint64(40)))
 			Expect(logWin.numberLostPackets).To(BeZero())
+			Expect(logWin.numberQueueBuildup).To(BeZero())
 
 			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(3)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
@@ -99,6 +104,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
 			Expect(logWin.accumulatedSize).To(Equal(uint64(40)))
 			Expect(logWin.numberLostPackets).To(BeZero())
+			Expect(logWin.numberQueueBuildup).To(BeZero())
 
 			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(3)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
@@ -110,16 +116,17 @@ var _ = Describe("LogWin", func() {
 
 			Expect(logWin.sizeInMicroS).To(Equal(uint64(10)))
 
-			logWin.NewMediaPacketRecieved(199, 50, 5, false)
-			logWin.NewMediaPacketRecieved(200, 90, 5, true)
-			logWin.NewMediaPacketRecieved(201, 100, 12, false)
-			logWin.NewMediaPacketRecieved(202, 101, 8, true)
-			logWin.NewMediaPacketRecieved(203, 105, 20, false)
+			logWin.NewMediaPacketRecieved(199, 50, 5, false, false)
+			logWin.NewMediaPacketRecieved(200, 90, 5, true, false)
+			logWin.NewMediaPacketRecieved(201, 100, 12, false, false)
+			logWin.NewMediaPacketRecieved(202, 101, 8, true, false)
+			logWin.NewMediaPacketRecieved(203, 105, 20, false, false)
 
 			Expect(logWin.numberPacketArrived).To(Equal(uint64(5)))
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(2)))
 			Expect(logWin.accumulatedSize).To(Equal(uint64(50)))
 			Expect(logWin.numberLostPackets).To(BeZero())
+			Expect(logWin.numberQueueBuildup).To(BeZero())
 
 			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(5)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
@@ -130,6 +137,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
 			Expect(logWin.accumulatedSize).To(Equal(uint64(40)))
 			Expect(logWin.numberLostPackets).To(BeZero())
+			Expect(logWin.numberQueueBuildup).To(BeZero())
 
 			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(5)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
@@ -141,16 +149,17 @@ var _ = Describe("LogWin", func() {
 
 			Expect(logWin.sizeInMicroS).To(Equal(uint64(10)))
 
-			logWin.NewMediaPacketRecieved(199, 50, 5, false)
-			logWin.NewMediaPacketRecieved(200, 90, 5, true)
-			logWin.NewMediaPacketRecieved(201, 100, 12, false)
-			logWin.NewMediaPacketRecieved(202, 101, 8, true)
-			logWin.NewMediaPacketRecieved(213, 105, 20, false)
+			logWin.NewMediaPacketRecieved(199, 50, 5, false, true)
+			logWin.NewMediaPacketRecieved(200, 90, 5, true, false)
+			logWin.NewMediaPacketRecieved(201, 100, 12, false, false)
+			logWin.NewMediaPacketRecieved(202, 101, 8, true, true)
+			logWin.NewMediaPacketRecieved(213, 105, 20, false, true)
 
 			Expect(logWin.numberPacketArrived).To(Equal(uint64(5)))
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(2)))
 			Expect(logWin.accumulatedSize).To(Equal(uint64(50)))
 			Expect(logWin.numberLostPackets).To(Equal(uint64(10)))
+			Expect(logWin.numberQueueBuildup).To(Equal(uint64(3)))
 
 			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(1)))
 			Expect(logWin.lastPn).To(Equal(uint64(213)))
@@ -161,6 +170,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
 			Expect(logWin.accumulatedSize).To(Equal(uint64(40)))
 			Expect(logWin.numberLostPackets).To(Equal(uint64(10)))
+			Expect(logWin.numberQueueBuildup).To(Equal(uint64(2)))
 
 			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(1)))
 			Expect(logWin.lastPn).To(Equal(uint64(213)))
@@ -172,16 +182,17 @@ var _ = Describe("LogWin", func() {
 
 			Expect(logWin.sizeInMicroS).To(Equal(uint64(10)))
 
-			logWin.NewMediaPacketRecieved(189, 50, 5, false)
-			logWin.NewMediaPacketRecieved(200, 90, 5, true)
-			logWin.NewMediaPacketRecieved(201, 100, 12, false)
-			logWin.NewMediaPacketRecieved(202, 101, 8, true)
-			logWin.NewMediaPacketRecieved(203, 105, 20, false)
+			logWin.NewMediaPacketRecieved(189, 50, 5, false, true)
+			logWin.NewMediaPacketRecieved(200, 90, 5, true, true)
+			logWin.NewMediaPacketRecieved(201, 100, 12, false, false)
+			logWin.NewMediaPacketRecieved(202, 101, 8, true, false)
+			logWin.NewMediaPacketRecieved(203, 105, 20, false, false)
 
 			Expect(logWin.numberPacketArrived).To(Equal(uint64(5)))
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(2)))
 			Expect(logWin.accumulatedSize).To(Equal(uint64(50)))
 			Expect(logWin.numberLostPackets).To(Equal(uint64(10)))
+			Expect(logWin.numberQueueBuildup).To(Equal(uint64(2)))
 
 			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(4)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
@@ -192,8 +203,40 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
 			Expect(logWin.accumulatedSize).To(Equal(uint64(40)))
 			Expect(logWin.numberLostPackets).To(Equal(uint64(0)))
+			Expect(logWin.numberQueueBuildup).To(BeZero())
 
 			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(4)))
+			Expect(logWin.lastPn).To(Equal(uint64(203)))
+		})
+
+		It("3 packets with queue buildup with update", func() {
+			logWin := NewLogWinQueue(10)
+			logWin.lastPn = 200
+
+			Expect(logWin.sizeInMicroS).To(Equal(uint64(10)))
+
+			logWin.NewMediaPacketRecieved(201, 100, 12, false, false)
+			logWin.NewMediaPacketRecieved(202, 101, 8, true, true)
+			logWin.NewMediaPacketRecieved(203, 105, 20, false, true)
+
+			Expect(logWin.numberPacketArrived).To(Equal(uint64(3)))
+			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
+			Expect(logWin.accumulatedSize).To(Equal(uint64(40)))
+			Expect(logWin.numberLostPackets).To(BeZero())
+			Expect(logWin.numberQueueBuildup).To(Equal(uint64(2)))
+
+			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(3)))
+			Expect(logWin.lastPn).To(Equal(uint64(203)))
+
+			logWin.updateStats(105)
+
+			Expect(logWin.numberPacketArrived).To(Equal(uint64(3)))
+			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
+			Expect(logWin.accumulatedSize).To(Equal(uint64(40)))
+			Expect(logWin.numberLostPackets).To(BeZero())
+			Expect(logWin.numberQueueBuildup).To(Equal(uint64(2)))
+
+			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(3)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
 		})
 	})
