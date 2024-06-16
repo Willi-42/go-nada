@@ -14,8 +14,6 @@ type Receiver struct {
 	d_queue uint64 // estimated queuing delay
 	r_recv  uint64 // receiving rate
 
-	loss_int uint64 // Measured average loss interval in packet count
-
 	// Threshold value for setting the last observed packet loss to expiration.
 	// Measured in terms of packet counts.
 	loss_exp uint64
@@ -27,7 +25,7 @@ type Receiver struct {
 	p_mark uint64 // estimated packet ECN marking ratio
 
 	config    *Config
-	logWindow *LogWinQueue
+	logWindow *logWinQueue
 }
 
 func NewReceiver(config Config) Receiver {
@@ -73,6 +71,7 @@ func (r *Receiver) PacketArrived(pn uint64, sentTs uint64, recvTs uint64, packet
 	// update logwin
 	r.logWindow.NewMediaPacketRecieved(pn, recvTs, packetSize, marked, queueBuildup)
 	r.logWindow.updateStats(recvTs)
+	// TODO: calc loss_int
 
 	// calculate loss/marking ratio
 	totoalPackets := r.logWindow.numberPacketArrived + r.logWindow.numberLostPackets
@@ -88,10 +87,9 @@ func (r *Receiver) PacketArrived(pn uint64, sentTs uint64, recvTs uint64, packet
 func (r *Receiver) GenerateFeedback() (uint64, uint64, bool) {
 
 	// loss_exp is configured to self-scale with the average packet loss
-	// interval loss_int with a multiplier MULTILOSS:
-	// TODO: calc loss_int
-
-	r.loss_exp = uint64(r.config.MULTILOSS * float64(r.loss_int))
+	// interval loss_int with a multiplier MULTILOSS
+	loss_int := r.logWindow.lossInt.calcAvgLossInt()
+	r.loss_exp = uint64(r.config.MULTILOSS * loss_int)
 
 	// calculate non-linear warping of delay d_tilde if packet loss exists
 	// Only if the last observed packet loss is within the expiration

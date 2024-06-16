@@ -10,9 +10,10 @@ type packetEvent struct {
 }
 
 // LogWinQueue
-type LogWinQueue struct {
+type logWinQueue struct {
 	elements     []packetEvent
 	sizeInMicroS uint64
+	lossInt      lossInterval
 
 	numberOfPacketsSinceLastLoss uint64
 	lastPn                       uint64
@@ -27,18 +28,19 @@ type LogWinQueue struct {
 
 // NewLogWinQueue creates a new logging window queue.
 // Size has to be in micro seconds!
-func NewLogWinQueue(sizeInMicroS uint64) *LogWinQueue {
-	return &LogWinQueue{
+func NewLogWinQueue(sizeInMicroS uint64) *logWinQueue {
+	return &logWinQueue{
 		elements:     make([]packetEvent, 0),
 		sizeInMicroS: sizeInMicroS,
+		lossInt:      *newLossIntervall(8), // TODO: add to config
 	}
 }
 
-func (q *LogWinQueue) addLostEvent(ts, lossRange uint64) {
+func (q *logWinQueue) addLostEvent(ts, lossRange uint64) {
 	q.elements = append(q.elements, packetEvent{lost: true, tsRecived: ts, lossRange: lossRange})
 }
 
-func (q *LogWinQueue) addPacketEvent(
+func (q *logWinQueue) addPacketEvent(
 	pn uint64,
 	tsRecived uint64,
 	size uint64,
@@ -54,7 +56,7 @@ func (q *LogWinQueue) addPacketEvent(
 	})
 }
 
-func (q *LogWinQueue) NewMediaPacketRecieved(
+func (q *logWinQueue) NewMediaPacketRecieved(
 	pn uint64,
 	tsRecived uint64,
 	size uint64,
@@ -72,6 +74,7 @@ func (q *LogWinQueue) NewMediaPacketRecieved(
 	q.accumulatedSize += size
 	q.numberPacketArrived++
 	q.numberOfPacketsSinceLastLoss++
+	q.lossInt.addPacket()
 
 	if marked {
 		q.numberMarkedPackets++
@@ -87,18 +90,20 @@ func (q *LogWinQueue) NewMediaPacketRecieved(
 	}
 
 	// missing packets are considered lost
-	pnGap := pn - q.lastPn - 1
+	gapSize := pn - q.lastPn - 1
 
-	if pnGap != 0 {
-		q.addLostEvent(tsRecived, pnGap)
-		q.numberLostPackets += pnGap
+	// packet gap
+	if gapSize != 0 {
+		q.addLostEvent(tsRecived, gapSize)
+		q.numberLostPackets += gapSize
 		q.numberOfPacketsSinceLastLoss = 1
+		q.lossInt.addLoss(gapSize)
 	}
 
 	q.lastPn = pn
 }
 
-func (q *LogWinQueue) updateStats(currentTime uint64) {
+func (q *logWinQueue) updateStats(currentTime uint64) {
 	if currentTime <= q.sizeInMicroS {
 		return
 	}
