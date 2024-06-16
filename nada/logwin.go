@@ -15,8 +15,8 @@ type logWinQueue struct {
 	sizeInMicroS uint64
 	lossInt      lossInterval
 
-	numberOfPacketsSinceLastLoss uint64
-	lastPn                       uint64
+	numberPacketsSinceLoss uint64 // number of packets since the last loss occurred
+	lastPn                 uint64
 
 	// stats
 	numberLostPackets   uint64
@@ -41,7 +41,6 @@ func (q *logWinQueue) addLostEvent(ts, lossRange uint64) {
 }
 
 func (q *logWinQueue) addPacketEvent(
-	pn uint64,
 	tsRecived uint64,
 	size uint64,
 	marked bool,
@@ -70,10 +69,10 @@ func (q *logWinQueue) NewMediaPacketRecieved(
 		return
 	}
 
-	q.addPacketEvent(pn, tsRecived, size, marked, queueBuildup)
+	q.addPacketEvent(tsRecived, size, marked, queueBuildup)
 	q.accumulatedSize += size
 	q.numberPacketArrived++
-	q.numberOfPacketsSinceLastLoss++
+	q.numberPacketsSinceLoss++
 	q.lossInt.addPacket()
 
 	if marked {
@@ -96,7 +95,7 @@ func (q *logWinQueue) NewMediaPacketRecieved(
 	if gapSize != 0 {
 		q.addLostEvent(tsRecived, gapSize)
 		q.numberLostPackets += gapSize
-		q.numberOfPacketsSinceLastLoss = 1
+		q.numberPacketsSinceLoss = 1
 		q.lossInt.addLoss(gapSize)
 	}
 

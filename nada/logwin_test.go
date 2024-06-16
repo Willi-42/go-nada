@@ -20,7 +20,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberLostPackets).To(BeZero())
 			Expect(logWin.numberQueueBuildup).To(BeZero())
 
-			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(1)))
+			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(1)))
 			Expect(logWin.lastPn).To(Equal(uint64(0)))
 		})
 
@@ -37,7 +37,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberLostPackets).To(BeZero())
 			Expect(logWin.numberQueueBuildup).To(BeZero())
 
-			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(3)))
+			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(3)))
 			Expect(logWin.lastPn).To(Equal(uint64(2)))
 		})
 
@@ -54,7 +54,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberLostPackets).To(Equal(uint64(4)))
 			Expect(logWin.numberQueueBuildup).To(BeZero())
 
-			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(1)))
+			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(1)))
 			Expect(logWin.lastPn).To(Equal(uint64(6)))
 		})
 
@@ -75,7 +75,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberLostPackets).To(Equal(uint64(4)))
 			Expect(logWin.numberQueueBuildup).To(BeZero())
 
-			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(1)))
+			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(1)))
 			Expect(logWin.lastPn).To(Equal(uint64(6)))
 		})
 
@@ -95,7 +95,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberLostPackets).To(BeZero())
 			Expect(logWin.numberQueueBuildup).To(BeZero())
 
-			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(3)))
+			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(3)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
 
 			logWin.updateStats(105)
@@ -106,7 +106,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberLostPackets).To(BeZero())
 			Expect(logWin.numberQueueBuildup).To(BeZero())
 
-			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(3)))
+			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(3)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
 		})
 
@@ -128,7 +128,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberLostPackets).To(BeZero())
 			Expect(logWin.numberQueueBuildup).To(BeZero())
 
-			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(5)))
+			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(5)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
 
 			logWin.updateStats(105)
@@ -139,7 +139,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberLostPackets).To(BeZero())
 			Expect(logWin.numberQueueBuildup).To(BeZero())
 
-			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(5)))
+			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(5)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
 		})
 
@@ -161,7 +161,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberLostPackets).To(Equal(uint64(10)))
 			Expect(logWin.numberQueueBuildup).To(Equal(uint64(3)))
 
-			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(1)))
+			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(1)))
 			Expect(logWin.lastPn).To(Equal(uint64(213)))
 
 			logWin.updateStats(105)
@@ -172,7 +172,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberLostPackets).To(Equal(uint64(10)))
 			Expect(logWin.numberQueueBuildup).To(Equal(uint64(2)))
 
-			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(1)))
+			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(1)))
 			Expect(logWin.lastPn).To(Equal(uint64(213)))
 		})
 
@@ -194,7 +194,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberLostPackets).To(Equal(uint64(10)))
 			Expect(logWin.numberQueueBuildup).To(Equal(uint64(2)))
 
-			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(4)))
+			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(4)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
 
 			logWin.updateStats(105)
@@ -205,7 +205,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberLostPackets).To(Equal(uint64(0)))
 			Expect(logWin.numberQueueBuildup).To(BeZero())
 
-			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(4)))
+			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(4)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
 		})
 
@@ -225,7 +225,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberLostPackets).To(BeZero())
 			Expect(logWin.numberQueueBuildup).To(Equal(uint64(2)))
 
-			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(3)))
+			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(3)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
 
 			logWin.updateStats(105)
@@ -236,7 +236,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberLostPackets).To(BeZero())
 			Expect(logWin.numberQueueBuildup).To(Equal(uint64(2)))
 
-			Expect(logWin.numberOfPacketsSinceLastLoss).To(Equal(uint64(3)))
+			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(3)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
 		})
 	})
