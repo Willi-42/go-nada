@@ -33,8 +33,12 @@ func NewReceiver(config Config) Receiver {
 	}
 }
 
+// PacketArrived registers a new arrived packet.
+// sentTs and recvTs are timestamps in microseconds.
+// packetSize is the size of the packet in bytes.
+// marked: packet got ECN
 func (r *Receiver) PacketArrived(
-	pn uint64,
+	packetNumber uint64,
 	sentTs uint64,
 	recvTs uint64,
 	packetSize uint64,
@@ -59,7 +63,7 @@ func (r *Receiver) PacketArrived(
 	}
 
 	// update logwin
-	r.logWindow.NewMediaPacketRecieved(pn, recvTs, packetSize, marked, queueBuildup)
+	r.logWindow.NewMediaPacketRecieved(packetNumber, recvTs, packetSize, marked, queueBuildup)
 	r.logWindow.updateStats(recvTs)
 
 	// calculate loss/marking ratio
@@ -69,7 +73,7 @@ func (r *Receiver) PacketArrived(
 
 	// update reciving rate
 	// recived_bytes_in_logwin / logWintimeInMs * 1000 = bps
-	r.r_recv = uint64((float64(r.logWindow.accumulatedSize) / float64(r.config.LogWin)) * 1000)
+	r.r_recv = uint64((float64(r.logWindow.totalSize) / float64(r.config.LogWin)) * 1000)
 }
 
 // GenerateFeedback: On time to send a new feedback report (t_curr - t_last > DELTA)
@@ -98,7 +102,7 @@ func (r *Receiver) GenerateFeedback() (uint64, uint64, bool) {
 	// if packetloss in logwin and no queue build up
 	// for all previous delay samples within the observation window LOGWIN
 	rampUpMode := false
-	if r.logWindow.numberLostPackets == 0 && r.logWindow.numberQueueBuildup == 0 {
+	if r.logWindow.numberLostPackets == 0 && r.logWindow.queueBuildupCnt == 0 {
 		rampUpMode = true
 	}
 

@@ -22,8 +22,8 @@ type logWinQueue struct {
 	numberLostPackets   uint64
 	numberMarkedPackets uint64
 	numberPacketArrived uint64
-	accumulatedSize     uint64
-	numberQueueBuildup  uint64 // number of times a queue buildup was detected
+	totalSize           uint64 // bytes recived in current window
+	queueBuildupCnt     uint64 // number of times a queue buildup was detected
 }
 
 // NewLogWinQueue creates a new logging window queue.
@@ -70,7 +70,7 @@ func (q *logWinQueue) NewMediaPacketRecieved(
 	}
 
 	q.addPacketEvent(tsRecived, size, marked, queueBuildup)
-	q.accumulatedSize += size
+	q.totalSize += size
 	q.numberPacketArrived++
 	q.numberPacketsSinceLoss++
 	q.lossInt.addPacket()
@@ -80,7 +80,7 @@ func (q *logWinQueue) NewMediaPacketRecieved(
 	}
 
 	if queueBuildup {
-		q.numberQueueBuildup++
+		q.queueBuildupCnt++
 	}
 
 	// skip gap calc for first packet
@@ -124,11 +124,11 @@ func (q *logWinQueue) updateStats(currentTime uint64) {
 			}
 
 			if event.queueBuildup {
-				q.numberQueueBuildup--
+				q.queueBuildupCnt--
 			}
 
 			q.numberPacketArrived--
-			q.accumulatedSize -= event.size
+			q.totalSize -= event.size
 		}
 	}
 
