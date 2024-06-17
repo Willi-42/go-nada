@@ -54,7 +54,7 @@ func (r *Receiver) PacketArrived(
 	// update queue delay
 	r.d_queue = d_fwd - r.d_base
 	// TODO: add min filter to d_queue
-	// compare: https://www.rfc-editor.org/rfc/rfc8698#section-5.1.1
+	// compare: https://www.rfc-editor.org/rfc/rfc8698.html#name-method-for-delay-loss-and-m
 
 	// check for queue build-up
 	queueBuildup := false

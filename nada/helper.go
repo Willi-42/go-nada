@@ -22,3 +22,33 @@ func (r *Receiver) calcNonLinWrappingQDelay() uint64 {
 		return uint64(math.Exp(tmp))
 	}
 }
+
+func rampUpRate(config Config, rtt uint64, prevRefRate uint64, recvRate uint64) uint64 {
+	bound := float64(config.QBOUND) / float64(rtt+config.FeedbackDelta+config.DFILT)
+	gamma := min(config.GAMMA_MAX, bound)
+
+	incrRecvRate := (1 + gamma) * float64(recvRate)
+
+	return max(prevRefRate, uint64(incrRecvRate))
+}
+
+func gradualUpdateRate(
+	conf Config,
+	prevRefRate uint64,
+	xCurr uint64,
+	xPrev uint64,
+	feedbackDelta uint64,
+) uint64 {
+	tmp := conf.Priority * float64(conf.RefCongLevel) * float64(conf.MaxRate) / float64(prevRefRate)
+	xOffset := float64(xCurr) - tmp
+
+	xDiff := xCurr - xPrev
+
+	calc1 := conf.Kappa * (float64(feedbackDelta) / float64(conf.Tau))
+	calc1 *= xOffset / float64(conf.Tau) * float64(prevRefRate)
+
+	calc2 := conf.Kappa * conf.Eta * (float64(xDiff) / float64(conf.Tau)) * float64(prevRefRate)
+
+	return prevRefRate - uint64(calc1) - uint64(calc2)
+
+}
