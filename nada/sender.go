@@ -6,14 +6,13 @@ type Sender struct {
 	refernceRate uint64 // Reference rate based on network congestion
 	rtt          uint64 // Estimated round-trip time
 	xPerv        uint64 // Previous value of aggregate congestion signal
-	lastReport   uint64
+	lastReport   uint64 // in micro sec
 
 	config *Config
 }
 
 func NewSender(config Config) Sender {
 	configPopulated := populateConfig(&config)
-	// logWinSize := configPopulated.LogWin * 1000 // convert to micro sec
 
 	return Sender{
 		refernceRate: configPopulated.MinRate,

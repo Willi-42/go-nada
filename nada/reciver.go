@@ -68,8 +68,8 @@ func (r *Receiver) PacketArrived(
 
 	// calculate loss/marking ratio
 	totoalPackets := r.logWindow.numberPacketArrived + r.logWindow.numberLostPackets
-	r.p_loss = r.calcSmoothedRatio(r.logWindow.numberLostPackets, totoalPackets, r.p_loss)
-	r.p_mark = r.calcSmoothedRatio(r.logWindow.numberMarkedPackets, totoalPackets, r.p_mark)
+	r.p_loss = smoothedRatio(*r.config, r.logWindow.numberLostPackets, totoalPackets, r.p_loss)
+	r.p_mark = smoothedRatio(*r.config, r.logWindow.numberMarkedPackets, totoalPackets, r.p_mark)
 
 	// update reciving rate
 	// recived_bytes_in_logwin / logWintimeInMs * 1000 = bps
@@ -90,13 +90,13 @@ func (r *Receiver) GenerateFeedback() (uint64, uint64, bool) {
 	// Only if the last observed packet loss is within the expiration
 	// window of loss_exp (measured in terms of packet counts), we apply non-lin warapping
 	if r.logWindow.numberPacketsSinceLoss <= loss_exp {
-		r.d_tilde = r.calcNonLinWrappingQDelay()
+		r.d_tilde = nonLinWrappingQDelay(*r.config, r.d_queue)
 	} else {
 		r.d_tilde = r.d_queue
 	}
 
 	// calculate aggregate congestion signal x_curr
-	x_curr := r.calcAggregateCng()
+	x_curr := aggregateCng(*r.config, r.d_tilde, r.p_mark, r.p_loss)
 
 	// determine mode of rate adaptation for sender: rmode
 	// if packetloss in logwin and no queue build up
