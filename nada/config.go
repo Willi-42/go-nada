@@ -2,9 +2,9 @@ package nada
 
 const (
 	PRIO      float64 = 1.0
-	RMIN      uint64  = 150000   // bps
-	RMAX      uint64  = 15000000 // bps
-	XREF      uint64  = 10       // ms
+	RMIN      uint64  = 150000  // bps
+	RMAX      uint64  = 1500000 // bps
+	XREF      uint64  = 10      // ms
 	KAPPA     float64 = 0.5
 	ETA       float64 = 2.0
 	TAU       uint64  = 500 // ms
@@ -61,23 +61,23 @@ func populateConfig(c *Config) *Config {
 
 	c.MinRate = setDefaultInt(c.MinRate, RMIN)
 	c.MaxRate = setDefaultInt(c.MaxRate, RMAX)
-	c.RefCongLevel = setDefaultInt(c.RefCongLevel, XREF)
+	c.RefCongLevel = setDefaultMs(c.RefCongLevel, XREF)
 	c.Kappa = setDefaultFloat(c.Kappa, KAPPA)
 	c.Eta = setDefaultFloat(c.Eta, ETA)
-	c.Tau = setDefaultInt(c.Tau, TAU)
-	c.FeedbackDelta = setDefaultInt(c.FeedbackDelta, DELTA)
-	c.LogWin = setDefaultInt(c.LogWin, LOGWIN)
-	c.QEPS = setDefaultInt(c.QEPS, QEPS)
-	c.DFILT = setDefaultInt(c.DFILT, DFILT)
+	c.Tau = setDefaultMs(c.Tau, TAU)
+	c.FeedbackDelta = setDefaultMs(c.FeedbackDelta, DELTA)
+	c.LogWin = setDefaultMs(c.LogWin, LOGWIN)
+	c.QEPS = setDefaultMs(c.QEPS, QEPS)
+	c.DFILT = setDefaultMs(c.DFILT, DFILT)
 	c.GAMMA_MAX = setDefaultFloat(c.GAMMA_MAX, GAMMA_MAX)
-	c.QBOUND = setDefaultInt(c.QBOUND, QBOUND)
+	c.QBOUND = setDefaultMs(c.QBOUND, QBOUND)
 	c.MULTILOSS = setDefaultFloat(c.MULTILOSS, MULTILOSS)
-	c.QTH = setDefaultInt(c.QTH, QTH)
+	c.QTH = setDefaultMs(c.QTH, QTH)
 	c.LAMBDA = setDefaultFloat(c.LAMBDA, LAMBDA)
 	c.PLRREF = setDefaultFloat(c.PLRREF, PLRREF)
 	c.PMRREF = setDefaultFloat(c.PMRREF, PMRREF)
-	c.DLOSS = setDefaultInt(c.DLOSS, DLOSS)
-	c.DMARK = setDefaultInt(c.DMARK, DMARK)
+	c.DLOSS = setDefaultMs(c.DLOSS, DLOSS)
+	c.DMARK = setDefaultMs(c.DMARK, DMARK)
 	c.FPS = setDefaultInt(c.FPS, FPS)
 
 	c.BETA_S = setDefaultFloat(c.BETA_S, BETA_S)
@@ -85,6 +85,11 @@ func populateConfig(c *Config) *Config {
 	c.ALPHA = setDefaultFloat(c.ALPHA, ALPHA)
 
 	return c
+}
+
+// setDefaultMs sets default and converts to micro seconds
+func setDefaultMs(value, defaultValue uint64) uint64 {
+	return setDefaultInt(value, defaultValue) * 1000
 }
 
 func setDefaultInt(value, defaultValue uint64) uint64 {

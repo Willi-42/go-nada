@@ -21,7 +21,7 @@ type Receiver struct {
 
 func NewReceiver(config Config) Receiver {
 	configPopulated := populateConfig(&config)
-	logWinSize := configPopulated.LogWin * 1000 // convert to micro sec
+	logWinSize := configPopulated.LogWin
 
 	return Receiver{
 		d_base:    math.MaxUint64, // set to infinity
@@ -79,8 +79,9 @@ func (r *Receiver) PacketArrived(
 	r.p_mark = smoothedRatio(*r.config, r.logWindow.numberMarkedPackets, totoalPackets, r.p_mark)
 
 	// update reciving rate
-	// recived_bytes_in_logwin / logWintimeInMs * 1000 = bps
-	r.r_recv = uint64((float64(r.logWindow.totalSize) / float64(r.config.LogWin)) * 1000)
+	// recived_bytes_in_logwin / logWin = bps
+	logWinInS := float64(r.config.LogWin) / 1000000
+	r.r_recv = uint64((float64(r.logWindow.totalSize) / logWinInS))
 }
 
 // GenerateFeedback: On time to send a new feedback report (t_curr - t_last > DELTA)

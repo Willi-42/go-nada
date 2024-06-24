@@ -55,12 +55,14 @@ func gradualUpdateRate(
 	tmp := conf.Priority * float64(conf.RefCongLevel) * float64(conf.MaxRate) / float64(prevRefRate)
 	xOffset := float64(xCurr) - tmp
 
-	xDiff := xCurr - xPrev
+	xDiff := int64(xCurr) - int64(xPrev)
 
 	calc1 := conf.Kappa * (float64(feedbackDelta) / float64(conf.Tau))
-	calc1 *= xOffset / float64(conf.Tau) * float64(prevRefRate)
+	calc1 *= (xOffset / float64(conf.Tau)) * float64(prevRefRate)
 
 	calc2 := conf.Kappa * conf.Eta * (float64(xDiff) / float64(conf.Tau)) * float64(prevRefRate)
 
-	return prevRefRate - uint64(calc1) - uint64(calc2)
+	res := int64(prevRefRate) - int64(calc1) - int64(calc2)
+
+	return uint64(res)
 }
