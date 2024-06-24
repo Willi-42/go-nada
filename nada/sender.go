@@ -21,7 +21,7 @@ func NewSender(config Config) Sender {
 }
 
 // FeedbackReport calculates the new rate with the feedback from the receiver.
-// xCurr, recvRate, rampUpMode are from the reciver feedback.
+// xCurr, recvRate, rampUpMode are from the receiver feedback.
 // rtt is the current rtt in micro seconds.
 func (s *Sender) FeedbackReport(xCurr uint64, recvRate uint64, rampUpMode bool, rtt uint64) uint64 {
 	currTime := uint64(time.Now().UnixMicro())

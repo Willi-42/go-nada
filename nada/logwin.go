@@ -5,15 +5,15 @@ type packetEvent struct {
 	marked       bool
 	queueBuildup bool
 	size         uint64
-	tsRecived    uint64
+	tsReceived   uint64
 	lossRange    uint64 // for lost packets in a range
 }
 
 // LogWinQueue
 type logWinQueue struct {
-	elements     []packetEvent
-	sizeInMicroS uint64
-	lossInt      lossInterval
+	elements   []packetEvent // all events of current window
+	windowSize uint64        // size of the logging window in mirco seconds
+	lossInts   lossInterval  // for the avg loss interval calculation
 
 	numberPacketsSinceLoss uint64 // number of packets since the last loss occurred
 	lastPn                 uint64
@@ -22,7 +22,7 @@ type logWinQueue struct {
 	numberLostPackets   uint64
 	numberMarkedPackets uint64
 	numberPacketArrived uint64
-	totalSize           uint64 // bytes recived in current window
+	receivedBytes       uint64 // bytes received in current window
 	queueBuildupCnt     uint64 // number of times a queue buildup was detected
 }
 
@@ -30,14 +30,14 @@ type logWinQueue struct {
 // Size has to be in micro seconds!
 func NewLogWinQueue(sizeInMicroS uint64) *logWinQueue {
 	return &logWinQueue{
-		elements:     make([]packetEvent, 0),
-		sizeInMicroS: sizeInMicroS,
-		lossInt:      *newLossIntervall(8), // TODO: add to config
+		elements:   make([]packetEvent, 0),
+		windowSize: sizeInMicroS,
+		lossInts:   *newLossIntervall(8), // TODO: add to config
 	}
 }
 
 func (q *logWinQueue) addPacketEvent(
-	tsRecived uint64,
+	tsReceived uint64,
 	size uint64,
 	marked bool,
 	queueBuildup bool,
@@ -46,19 +46,19 @@ func (q *logWinQueue) addPacketEvent(
 		lost:         false,
 		marked:       marked,
 		size:         size,
-		tsRecived:    tsRecived,
+		tsReceived:   tsReceived,
 		queueBuildup: queueBuildup,
 	})
 }
 
-func (q *logWinQueue) addSkippedPN(pn, tsRecived uint64) {
-	q.addLostGap(pn, tsRecived)
+func (q *logWinQueue) addSkippedPN(pn, tsReceived uint64) {
+	q.checkForGaps(pn, tsReceived)
 	q.lastPn = pn
 }
 
 func (q *logWinQueue) NewMediaPacketRecieved(
 	pn uint64,
-	tsRecived uint64,
+	tsReceived uint64,
 	size uint64,
 	marked bool,
 	queueBuildup bool,
@@ -70,11 +70,11 @@ func (q *logWinQueue) NewMediaPacketRecieved(
 		return
 	}
 
-	q.addPacketEvent(tsRecived, size, marked, queueBuildup)
-	q.totalSize += size
+	q.addPacketEvent(tsReceived, size, marked, queueBuildup)
+	q.receivedBytes += size
 	q.numberPacketArrived++
 	q.numberPacketsSinceLoss++
-	q.lossInt.addPacket()
+	q.lossInts.addPacket()
 
 	if marked {
 		q.numberMarkedPackets++
@@ -84,12 +84,12 @@ func (q *logWinQueue) NewMediaPacketRecieved(
 		q.queueBuildupCnt++
 	}
 
-	q.addLostGap(pn, tsRecived)
+	q.checkForGaps(pn, tsReceived)
 
 	q.lastPn = pn
 }
 
-func (q *logWinQueue) addLostGap(pn, tsRecived uint64) {
+func (q *logWinQueue) checkForGaps(pn, tsReceived uint64) {
 	// skip gap calc for first packet
 	if pn == 0 {
 		return
@@ -100,32 +100,32 @@ func (q *logWinQueue) addLostGap(pn, tsRecived uint64) {
 
 	// packet gap
 	if gapSize != 0 {
-		q.addLostEvent(tsRecived, gapSize)
+		q.addLossEvent(tsReceived, gapSize)
 		q.numberLostPackets += gapSize
 		q.numberPacketsSinceLoss = 1
-		q.lossInt.addLoss(gapSize)
+		q.lossInts.addLoss(gapSize)
 	}
 }
 
-func (q *logWinQueue) addLostEvent(ts, lossRange uint64) {
+func (q *logWinQueue) addLossEvent(ts, lossRange uint64) {
 	q.elements = append(q.elements, packetEvent{
-		lost:      true,
-		tsRecived: ts,
-		lossRange: lossRange,
-		marked:    false,
+		lost:       true,
+		tsReceived: ts,
+		lossRange:  lossRange,
+		marked:     false,
 	})
 }
 
 func (q *logWinQueue) updateStats(currentTime uint64) {
-	if currentTime <= q.sizeInMicroS {
+	if currentTime <= q.windowSize {
 		return
 	}
 
-	threashold := currentTime - q.sizeInMicroS
+	threashold := currentTime - q.windowSize
 	discardIndes := 0
 
 	for _, event := range q.elements {
-		if event.tsRecived <= threashold {
+		if event.tsReceived <= threashold {
 			discardIndes++
 
 			if event.lost {
@@ -142,7 +142,7 @@ func (q *logWinQueue) updateStats(currentTime uint64) {
 			}
 
 			q.numberPacketArrived--
-			q.totalSize -= event.size
+			q.receivedBytes -= event.size
 		}
 	}
 

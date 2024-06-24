@@ -1,5 +1,0 @@
-package nada
-
-func Foo() {
-
-}

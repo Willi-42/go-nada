@@ -4,7 +4,7 @@ import (
 	"math"
 )
 
-// Reciver: all timestamps are in microseconds
+// Receiver: all timestamps are in microseconds
 type Receiver struct {
 	d_base  uint64 // estimated baseline delay
 	d_tilde uint64 // Equivalent delay after non-linear warping
@@ -79,19 +79,20 @@ func (r *Receiver) PacketArrived(
 	r.p_mark = smoothedRatio(*r.config, r.logWindow.numberMarkedPackets, totoalPackets, r.p_mark)
 
 	// update reciving rate
-	// recived_bytes_in_logwin / logWin = bps
+	// received_bytes_in_logwin / logWin = bps
 	logWinInS := float64(r.config.LogWin) / 1000000
-	r.r_recv = uint64((float64(r.logWindow.totalSize) / logWinInS))
+	r.r_recv = uint64((float64(r.logWindow.receivedBytes) / logWinInS))
 }
 
 // GenerateFeedback: On time to send a new feedback report (t_curr - t_last > DELTA)
+// Returns reciving rate, aggregated congestion signal and rampUpMode.
 func (r *Receiver) GenerateFeedback() (uint64, uint64, bool) {
 
 	// loss_exp is configured to self-scale with the average packet loss
 	// interval loss_int with a multiplier MULTILOSS
 	// Threshold value for setting the last observed packet loss to expiration.
 	// Measured in terms of packet counts.
-	loss_int := r.logWindow.lossInt.calcAvgLossInt()
+	loss_int := r.logWindow.lossInts.calcAvgLossInt()
 	loss_exp := uint64(r.config.MULTILOSS * loss_int)
 
 	// calculate non-linear warping of delay d_tilde if packet loss exists
@@ -113,8 +114,6 @@ func (r *Receiver) GenerateFeedback() (uint64, uint64, bool) {
 	if r.logWindow.numberLostPackets == 0 && r.logWindow.queueBuildupCnt == 0 {
 		rampUpMode = true
 	}
-
-	// send feedback containing values of: rmode, x_curr, and r_recv
 
 	return r.r_recv, x_curr, rampUpMode
 }
