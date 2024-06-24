@@ -33,9 +33,16 @@ func NewReceiver(config Config) Receiver {
 	}
 }
 
+// PacketWithoutTsArrived can be used to register the
+// arrival of packets without a ts, e.g. ack only packets.
+// Have to be registered, otherwise considered lost.
+func (r *Receiver) PacketWithoutTsArrived(packetNumber, recvTs uint64) {
+	r.logWindow.addSkippedPN(packetNumber, recvTs)
+}
+
 // PacketArrived registers a new arrived packet.
 // sentTs and recvTs are timestamps in microseconds.
-// packetSize is the size of the packet in bytes.
+// packetSize is the size of the packet in bits.
 // marked: packet got ECN
 func (r *Receiver) PacketArrived(
 	packetNumber uint64,
@@ -58,7 +65,7 @@ func (r *Receiver) PacketArrived(
 
 	// check for queue build-up
 	queueBuildup := false
-	if r.d_base >= r.config.QEPS {
+	if r.d_queue >= r.config.QEPS {
 		queueBuildup = true
 	}
 

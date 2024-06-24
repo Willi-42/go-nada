@@ -15,7 +15,7 @@ const (
 	GAMMA_MAX float64 = 0.5
 	QBOUND    uint64  = 50 // ms
 	MULTILOSS float64 = 7.0
-	QTH       uint64  = 7.0
+	QTH       uint64  = 50 // ms
 	LAMBDA    float64 = 0.5
 	PLRREF    float64 = 0.01
 	PMRREF    float64 = 0.01

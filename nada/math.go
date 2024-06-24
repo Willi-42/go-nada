@@ -1,6 +1,8 @@
 package nada
 
-import "math"
+import (
+	"math"
+)
 
 // smoothedRatio calculates the smoothed loss/marking ratio
 func smoothedRatio(conf Config, currentCnt, totoalCnt, prevRatio uint64) uint64 {
@@ -21,7 +23,7 @@ func nonLinWrappingQDelay(conf Config, d_queue uint64) uint64 {
 		return d_queue
 	} else {
 		tmp := -conf.LAMBDA * (float64(d_queue-conf.QTH) / float64(conf.QTH))
-		return uint64(math.Exp(tmp))
+		return conf.QTH * uint64(math.Exp(tmp))
 	}
 }
 

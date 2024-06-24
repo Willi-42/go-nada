@@ -36,10 +36,6 @@ func NewLogWinQueue(sizeInMicroS uint64) *logWinQueue {
 	}
 }
 
-func (q *logWinQueue) addLostEvent(ts, lossRange uint64) {
-	q.elements = append(q.elements, packetEvent{lost: true, tsRecived: ts, lossRange: lossRange})
-}
-
 func (q *logWinQueue) addPacketEvent(
 	tsRecived uint64,
 	size uint64,
@@ -53,6 +49,11 @@ func (q *logWinQueue) addPacketEvent(
 		tsRecived:    tsRecived,
 		queueBuildup: queueBuildup,
 	})
+}
+
+func (q *logWinQueue) addSkippedPN(pn, tsRecived uint64) {
+	q.addLostGap(pn, tsRecived)
+	q.lastPn = pn
 }
 
 func (q *logWinQueue) NewMediaPacketRecieved(
@@ -83,6 +84,12 @@ func (q *logWinQueue) NewMediaPacketRecieved(
 		q.queueBuildupCnt++
 	}
 
+	q.addLostGap(pn, tsRecived)
+
+	q.lastPn = pn
+}
+
+func (q *logWinQueue) addLostGap(pn, tsRecived uint64) {
 	// skip gap calc for first packet
 	if pn == 0 {
 		return
@@ -98,8 +105,15 @@ func (q *logWinQueue) NewMediaPacketRecieved(
 		q.numberPacketsSinceLoss = 1
 		q.lossInt.addLoss(gapSize)
 	}
+}
 
-	q.lastPn = pn
+func (q *logWinQueue) addLostEvent(ts, lossRange uint64) {
+	q.elements = append(q.elements, packetEvent{
+		lost:      true,
+		tsRecived: ts,
+		lossRange: lossRange,
+		marked:    false,
+	})
 }
 
 func (q *logWinQueue) updateStats(currentTime uint64) {
