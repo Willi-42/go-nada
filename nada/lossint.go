@@ -1,6 +1,8 @@
 package nada
 
-// based on https://www.rfc-editor.org/rfc/rfc5348#section-5.4
+// Loss interval calculation based on https://www.rfc-editor.org/rfc/rfc5348#section-5.4
+// However this start a new loss interval with every loss.
+// TODO: should this be changed to TRFC (rfc5348) style loss interval (based on RTTs)
 type lossInterval struct {
 	intervals []uint64
 	maxsize   int
@@ -18,6 +20,11 @@ func newLossIntervall(maxsize int) *lossInterval {
 		weigts[i] = 2 * float64(maxsize-i) / float64(maxsize+2)
 	}
 
+	// maxSize is the size of the interval
+	// We keep an additonal interval so the avg calc can decide to use newest
+	// interfall one or not
+	maxsize += 1
+
 	return &lossInterval{
 		intervals: make([]uint64, 0),
 		maxsize:   maxsize,
@@ -30,7 +37,7 @@ func (l *lossInterval) addLoss(lossGap uint64) {
 
 	l.intervals = append(l.intervals, lossGap)
 
-	// drop oldest int
+	// drop oldest interval
 	if len(l.intervals) >= l.maxsize {
 		l.intervals = l.intervals[1:]
 	}
@@ -38,7 +45,7 @@ func (l *lossInterval) addLoss(lossGap uint64) {
 
 // addPacket adds packet to current loss interval
 func (l *lossInterval) addPacket() {
-	// no loss yet
+	// no loss yet, first loss will start the first interval
 	if len(l.intervals) == 0 {
 		return
 	}

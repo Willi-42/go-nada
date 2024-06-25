@@ -33,6 +33,12 @@ var _ = Describe("Loss Intervall", func() {
 			lossInt.addLoss(2)
 			lossInt.addLoss(32)
 
+			for i := 0; i < 5; i++ {
+				lossInt.addPacket()
+			}
+
+			lossInt.addLoss(3)
+
 			res := lossInt.calcAvgLossInt()
 
 			Expect(res).NotTo(Equal(float64(0)))
