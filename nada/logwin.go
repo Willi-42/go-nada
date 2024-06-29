@@ -1,5 +1,7 @@
 package nada
 
+import "log"
+
 type packetEvent struct {
 	lost         bool
 	marked       bool
@@ -22,7 +24,7 @@ type logWinQueue struct {
 	numberLostPackets   uint64
 	numberMarkedPackets uint64
 	numberPacketArrived uint64
-	receivedBytes       uint64 // bytes received in current window
+	receivedBits        uint64 // bytes received in current window
 	queueBuildupCnt     uint64 // number of times a queue buildup was detected
 }
 
@@ -71,7 +73,7 @@ func (q *logWinQueue) NewMediaPacketRecieved(
 	}
 
 	q.addPacketEvent(tsReceived, size, marked, queueBuildup)
-	q.receivedBytes += size
+	q.receivedBits += size
 	q.numberPacketArrived++
 	q.numberPacketsSinceLoss++
 	q.lossInts.addPacket()
@@ -100,6 +102,8 @@ func (q *logWinQueue) checkForGaps(pn, tsReceived uint64) {
 
 	// packet gap
 	if gapSize != 0 {
+		log.Printf("got gap: %v - %v", q.lastPn, pn)
+
 		q.addLossEvent(tsReceived, gapSize)
 		q.numberLostPackets += gapSize
 		q.numberPacketsSinceLoss = 1
@@ -142,7 +146,7 @@ func (q *logWinQueue) updateStats(currentTime uint64) {
 			}
 
 			q.numberPacketArrived--
-			q.receivedBytes -= event.size
+			q.receivedBits -= event.size
 		}
 	}
 

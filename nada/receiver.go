@@ -79,9 +79,10 @@ func (r *Receiver) PacketArrived(
 	r.p_mark = smoothedRatio(*r.config, r.logWindow.numberMarkedPackets, totoalPackets, r.p_mark)
 
 	// update reciving rate
-	// received_bytes_in_logwin / logWin = bps
-	logWinInS := float64(r.config.LogWin) / 1000000
-	r.r_recv = uint64((float64(r.logWindow.receivedBytes) / logWinInS))
+	// TODO: this might overflow
+	recvRateMicro := r.logWindow.receivedBits * 1000000
+
+	r.r_recv = recvRateMicro / r.config.LogWin
 }
 
 // GenerateFeedback: On time to send a new feedback report (t_curr - t_last > DELTA)
@@ -108,7 +109,7 @@ func (r *Receiver) GenerateFeedback() (uint64, uint64, bool) {
 	x_curr := aggregateCng(*r.config, r.d_tilde, r.p_mark, r.p_loss)
 
 	// determine mode of rate adaptation for sender: rmode
-	// if packetloss in logwin and no queue build up
+	// if no packet loss in logwin and no queue build up
 	// for all previous delay samples within the observation window LOGWIN
 	rampUpMode := false
 	if r.logWindow.numberLostPackets == 0 && r.logWindow.queueBuildupCnt == 0 {

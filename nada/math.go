@@ -51,10 +51,15 @@ func gradualUpdateRate(
 	xPrev uint64,
 	feedbackDelta uint64,
 ) uint64 {
+	if prevRefRate == 0 {
+		prevRefRate = 1 // prevent division by 0
+	}
 
-	tmp := conf.Priority * float64(conf.RefCongLevel) * float64(conf.MaxRate) / float64(prevRefRate)
-	xOffset := float64(xCurr) - tmp
+	// xOffset: congestion signal at equilibrium
+	xIdeal := conf.Priority * float64(conf.RefCongLevel) * (float64(conf.MaxRate) / float64(prevRefRate))
+	xOffset := float64(xCurr) - xIdeal
 
+	// current congestion signal change
 	xDiff := int64(xCurr) - int64(xPrev)
 
 	calc1 := conf.Kappa * (float64(feedbackDelta) / float64(conf.Tau))
@@ -63,6 +68,11 @@ func gradualUpdateRate(
 	calc2 := conf.Kappa * conf.Eta * (float64(xDiff) / float64(conf.Tau)) * float64(prevRefRate)
 
 	res := int64(prevRefRate) - int64(calc1) - int64(calc2)
+
+	// TODO: why can there be a negative result
+	if res < 0 {
+		res = 0
+	}
 
 	return uint64(res)
 }

@@ -1,11 +1,13 @@
 package nada
 
-import "time"
+import (
+	"time"
+)
 
 type Sender struct {
-	refernceRate uint64 // Reference rate based on network congestion
-	xPerv        uint64 // Previous value of aggregate congestion signal
-	lastReport   uint64 // in micro sec
+	prevRate   uint64 // Previous reference rate based on network congestion
+	xPerv      uint64 // Previous value of aggregate congestion signal
+	lastReport uint64 // in micro sec
 
 	config *Config
 }
@@ -14,9 +16,9 @@ func NewSender(config Config) Sender {
 	configPopulated := populateConfig(&config)
 
 	return Sender{
-		refernceRate: configPopulated.MinRate,
-		xPerv:        0,
-		config:       configPopulated,
+		prevRate: configPopulated.MinRate,
+		xPerv:    0,
+		config:   configPopulated,
 	}
 }
 
@@ -25,6 +27,7 @@ func NewSender(config Config) Sender {
 // rtt is the current rtt in micro seconds.
 func (s *Sender) FeedbackReport(xCurr uint64, recvRate uint64, rampUpMode bool, rtt uint64) uint64 {
 	currTime := uint64(time.Now().UnixMicro())
+	newRate := uint64(0)
 
 	// default feedback interval
 	delta := s.config.FeedbackDelta
@@ -35,15 +38,18 @@ func (s *Sender) FeedbackReport(xCurr uint64, recvRate uint64, rampUpMode bool, 
 	}
 
 	if rampUpMode {
-		s.refernceRate = rampUpRate(*s.config, rtt, s.refernceRate, recvRate)
+		newRate = rampUpRate(*s.config, rtt, s.prevRate, recvRate)
 	} else {
-		s.refernceRate = gradualUpdateRate(*s.config, s.refernceRate, xCurr, s.xPerv, delta)
+		newRate = gradualUpdateRate(*s.config, s.prevRate, xCurr, s.xPerv, delta)
 	}
 
-	// TODO: clip rate r_ref within the range of minimum rate (RMIN) and maximum rate (RMAX).
+	// clip rate r_ref within the range of minimum rate (RMIN) and maximum rate (RMAX).
+	newRate = max(s.config.MinRate, newRate)
+	newRate = min(s.config.MaxRate, newRate)
 
+	s.prevRate = newRate
 	s.xPerv = xCurr
 	s.lastReport = currTime
 
-	return s.refernceRate
+	return newRate
 }
