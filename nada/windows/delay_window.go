@@ -1,21 +1,21 @@
-package nada
+package windows
 
 import "slices"
 
-type delayWindow struct {
+type DelayWindow struct {
 	delaySampls []uint64
 	size        int
 }
 
-func newDelayWin(size int) *delayWindow {
-	return &delayWindow{
+func NewDelayWin(size int) *DelayWindow {
+	return &DelayWindow{
 		delaySampls: make([]uint64, 0),
 		size:        size,
 	}
 }
 
-// addSample adds a delay sample to the window
-func (d *delayWindow) addSample(delay uint64) {
+// AddSample adds a delay sample to the window
+func (d *DelayWindow) AddSample(delay uint64) {
 
 	d.delaySampls = append(d.delaySampls, delay)
 
@@ -25,7 +25,7 @@ func (d *delayWindow) addSample(delay uint64) {
 	}
 }
 
-// minDelay returns the minimum delay in the current window
-func (d *delayWindow) minDelay() uint64 {
+// MinDelay returns the minimum delay in the current window
+func (d *DelayWindow) MinDelay() uint64 {
 	return slices.Min(d.delaySampls)
 }

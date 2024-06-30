@@ -2,6 +2,8 @@ package nada
 
 import (
 	"math"
+
+	"github.com/Willi-42/go-nada/nada/windows"
 )
 
 // Receiver: all timestamps are in microseconds
@@ -16,8 +18,8 @@ type Receiver struct {
 	p_mark uint64 // estimated packet ECN marking ratio
 
 	config    *Config
-	logWindow *logWindow
-	delayWin  *delayWindow // used to filter delay samples
+	logWindow *windows.LogWindow
+	delayWin  *windows.DelayWindow // used to filter delay samples
 }
 
 func NewReceiver(config Config) Receiver {
@@ -30,8 +32,8 @@ func NewReceiver(config Config) Receiver {
 		p_mark:    0,
 		r_recv:    0,
 		config:    configPopulated,
-		logWindow: NewLogWindow(logWinSize),
-		delayWin:  newDelayWin(15), // TODO: add to config
+		logWindow: windows.NewLogWindow(logWinSize),
+		delayWin:  windows.NewDelayWin(15), // TODO: add to config
 	}
 }
 
@@ -39,7 +41,7 @@ func NewReceiver(config Config) Receiver {
 // arrival of packets without a ts, e.g. ack only packets.
 // Have to be registered, otherwise considered lost.
 func (r *Receiver) PacketWithoutTsArrived(packetNumber, recvTs uint64) {
-	r.logWindow.addSkippedPN(packetNumber, recvTs)
+	r.logWindow.AddSkippedPN(packetNumber, recvTs)
 }
 
 // PacketArrived registers a new arrived packet.
@@ -65,8 +67,8 @@ func (r *Receiver) PacketArrived(
 
 	// filter qdelay with min filter
 	// compare: https://www.rfc-editor.org/rfc/rfc8698.html#name-method-for-delay-loss-and-m
-	r.delayWin.addSample(currDelay)
-	r.d_queue = r.delayWin.minDelay()
+	r.delayWin.AddSample(currDelay)
+	r.d_queue = r.delayWin.MinDelay()
 
 	// check for queue build-up
 	queueBuildup := false
@@ -76,16 +78,16 @@ func (r *Receiver) PacketArrived(
 
 	// update logwin
 	r.logWindow.NewMediaPacketRecieved(packetNumber, recvTs, packetSize, marked, queueBuildup)
-	r.logWindow.updateStats(recvTs)
+	r.logWindow.UpdateStats(recvTs)
 
 	// calculate loss/marking ratio
-	totoalPackets := r.logWindow.numberPacketArrived + r.logWindow.numberLostPackets
-	r.p_loss = smoothedRatio(*r.config, r.logWindow.numberLostPackets, totoalPackets, r.p_loss)
-	r.p_mark = smoothedRatio(*r.config, r.logWindow.numberMarkedPackets, totoalPackets, r.p_mark)
+	totoalPackets := r.logWindow.NumberPacketArrived() + r.logWindow.NumberLostPackets()
+	r.p_loss = smoothedRatio(*r.config, r.logWindow.NumberLostPackets(), totoalPackets, r.p_loss)
+	r.p_mark = smoothedRatio(*r.config, r.logWindow.NumberMarkedPackets(), totoalPackets, r.p_mark)
 
 	// update reciving rate
 	// TODO: this might overflow
-	recvRateMicro := r.logWindow.receivedBits * 1000000
+	recvRateMicro := r.logWindow.ReceivedBits() * 1000000
 
 	r.r_recv = recvRateMicro / r.config.LogWin
 }
@@ -98,13 +100,13 @@ func (r *Receiver) GenerateFeedback() (uint64, uint64, bool) {
 	// interval loss_int with a multiplier MULTILOSS
 	// Threshold value for setting the last observed packet loss to expiration.
 	// Measured in terms of packet counts.
-	loss_int := r.logWindow.lossInts.calcAvgLossInt()
+	loss_int := r.logWindow.AvgLossInterval()
 	loss_exp := uint64(r.config.MULTILOSS * loss_int)
 
 	// calculate non-linear warping of delay d_tilde if packet loss exists
 	// Only if the last observed packet loss is within the expiration
 	// window of loss_exp (measured in terms of packet counts), we apply non-lin warapping
-	if r.logWindow.numberPacketsSinceLoss <= loss_exp {
+	if r.logWindow.NumberPacketsSinceLoss() <= loss_exp {
 		r.d_tilde = nonLinWrappingQDelay(*r.config, r.d_queue)
 	} else {
 		r.d_tilde = r.d_queue
@@ -117,7 +119,7 @@ func (r *Receiver) GenerateFeedback() (uint64, uint64, bool) {
 	// if no packet loss in logwin and no queue build up
 	// for all previous delay samples within the observation window LOGWIN
 	rampUpMode := false
-	if r.logWindow.numberLostPackets == 0 && r.logWindow.queueBuildupCnt == 0 {
+	if r.logWindow.NumberLostPackets() == 0 && r.logWindow.QueueBuildupCnt() == 0 {
 		rampUpMode = true
 	}
 

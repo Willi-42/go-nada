@@ -1,4 +1,4 @@
-package nada
+package windows
 
 import (
 	"testing"
@@ -98,7 +98,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(3)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
 
-			logWin.updateStats(105)
+			logWin.UpdateStats(105)
 
 			Expect(logWin.numberPacketArrived).To(Equal(uint64(3)))
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
@@ -131,7 +131,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(5)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
 
-			logWin.updateStats(105)
+			logWin.UpdateStats(105)
 
 			Expect(logWin.numberPacketArrived).To(Equal(uint64(3)))
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
@@ -164,7 +164,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(1)))
 			Expect(logWin.lastPn).To(Equal(uint64(213)))
 
-			logWin.updateStats(105)
+			logWin.UpdateStats(105)
 
 			Expect(logWin.numberPacketArrived).To(Equal(uint64(3)))
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
@@ -197,7 +197,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(4)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
 
-			logWin.updateStats(105)
+			logWin.UpdateStats(105)
 
 			Expect(logWin.numberPacketArrived).To(Equal(uint64(3)))
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
@@ -228,7 +228,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(3)))
 			Expect(logWin.lastPn).To(Equal(uint64(203)))
 
-			logWin.updateStats(105)
+			logWin.UpdateStats(105)
 
 			Expect(logWin.numberPacketArrived).To(Equal(uint64(3)))
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
@@ -251,9 +251,9 @@ var _ = Describe("LogWin", func() {
 			logWin.NewMediaPacketRecieved(201, 100, 12, false, false)
 			logWin.NewMediaPacketRecieved(202, 101, 8, true, true)
 
-			logWin.addSkippedPN(203, 102)
-			logWin.addSkippedPN(204, 103)
-			logWin.addSkippedPN(207, 103)
+			logWin.AddSkippedPN(203, 102)
+			logWin.AddSkippedPN(204, 103)
+			logWin.AddSkippedPN(207, 103)
 
 			logWin.NewMediaPacketRecieved(50, 101, 8, false, false) // reordered packet
 
@@ -268,7 +268,7 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.numberPacketsSinceLoss).To(Equal(uint64(1)))
 			Expect(logWin.lastPn).To(Equal(uint64(213)))
 
-			logWin.updateStats(105)
+			logWin.UpdateStats(105)
 
 			Expect(logWin.numberPacketArrived).To(Equal(uint64(3)))
 			Expect(logWin.numberMarkedPackets).To(Equal(uint64(1)))
