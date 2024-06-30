@@ -7,7 +7,7 @@ type DelayWindow struct {
 	size        int
 }
 
-func NewDelayWin(size int) *DelayWindow {
+func NewDelayWindow(size int) *DelayWindow {
 	return &DelayWindow{
 		delaySampls: make([]uint64, 0),
 		size:        size,
@@ -20,7 +20,7 @@ func (d *DelayWindow) AddSample(delay uint64) {
 	d.delaySampls = append(d.delaySampls, delay)
 
 	// drop oldest interval
-	if len(d.delaySampls) >= d.size {
+	if len(d.delaySampls) > d.size {
 		d.delaySampls = d.delaySampls[1:]
 	}
 }

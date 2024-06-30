@@ -54,7 +54,7 @@ func (l *lossInterval) addPacket() {
 }
 
 // Measured average loss interval in packet count
-func (l *lossInterval) calcAvgLossInt() float64 {
+func (l *lossInterval) avgLossInt() float64 {
 	i_tot0 := float64(0)
 	i_tot1 := float64(0)
 	w_tot := float64(0)

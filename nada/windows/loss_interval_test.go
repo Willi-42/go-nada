@@ -14,11 +14,11 @@ var _ = Describe("Loss Intervall", func() {
 				lossInt.addPacket()
 			}
 
-			res := lossInt.calcAvgLossInt()
+			res := lossInt.avgLossInt()
 			Expect(res).To(Equal(float64(0)))
 
 			lossInt.addLoss(2)
-			res = lossInt.calcAvgLossInt()
+			res = lossInt.avgLossInt()
 
 			Expect(res).NotTo(Equal(float64(0)))
 		})
@@ -39,7 +39,7 @@ var _ = Describe("Loss Intervall", func() {
 
 			lossInt.addLoss(3)
 
-			res := lossInt.calcAvgLossInt()
+			res := lossInt.avgLossInt()
 
 			Expect(res).NotTo(Equal(float64(0)))
 		})
