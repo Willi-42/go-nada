@@ -11,11 +11,11 @@ type packetEvent struct {
 	lossRange    uint64 // for lost packets in a range
 }
 
-// LogWinQueue
-type logWinQueue struct {
+// logWindow is a logging window
+type logWindow struct {
 	elements   []packetEvent // all events of current window
 	windowSize uint64        // size of the logging window in mirco seconds
-	lossInts   lossInterval  // for the avg loss interval calculation
+	lossInts   *lossInterval // for the avg loss interval calculation
 
 	numberPacketsSinceLoss uint64 // number of packets since the last loss occurred
 	lastPn                 uint64
@@ -28,17 +28,17 @@ type logWinQueue struct {
 	queueBuildupCnt     uint64 // number of times a queue buildup was detected
 }
 
-// NewLogWinQueue creates a new logging window queue.
+// NewLogWindow creates a new logging window queue.
 // Size has to be in micro seconds!
-func NewLogWinQueue(sizeInMicroS uint64) *logWinQueue {
-	return &logWinQueue{
+func NewLogWindow(sizeInMicroS uint64) *logWindow {
+	return &logWindow{
 		elements:   make([]packetEvent, 0),
 		windowSize: sizeInMicroS,
-		lossInts:   *newLossIntervall(8), // TODO: add to config
+		lossInts:   newLossIntervall(8), // TODO: add to config
 	}
 }
 
-func (q *logWinQueue) addPacketEvent(
+func (q *logWindow) addPacketEvent(
 	tsReceived uint64,
 	size uint64,
 	marked bool,
@@ -53,12 +53,12 @@ func (q *logWinQueue) addPacketEvent(
 	})
 }
 
-func (q *logWinQueue) addSkippedPN(pn, tsReceived uint64) {
+func (q *logWindow) addSkippedPN(pn, tsReceived uint64) {
 	q.checkForGaps(pn, tsReceived)
 	q.lastPn = pn
 }
 
-func (q *logWinQueue) NewMediaPacketRecieved(
+func (q *logWindow) NewMediaPacketRecieved(
 	pn uint64,
 	tsReceived uint64,
 	size uint64,
@@ -91,7 +91,7 @@ func (q *logWinQueue) NewMediaPacketRecieved(
 	q.lastPn = pn
 }
 
-func (q *logWinQueue) checkForGaps(pn, tsReceived uint64) {
+func (q *logWindow) checkForGaps(pn, tsReceived uint64) {
 	// skip gap calc for first packet
 	if pn == 0 {
 		return
@@ -111,7 +111,7 @@ func (q *logWinQueue) checkForGaps(pn, tsReceived uint64) {
 	}
 }
 
-func (q *logWinQueue) addLossEvent(ts, lossRange uint64) {
+func (q *logWindow) addLossEvent(ts, lossRange uint64) {
 	q.elements = append(q.elements, packetEvent{
 		lost:       true,
 		tsReceived: ts,
@@ -120,7 +120,7 @@ func (q *logWinQueue) addLossEvent(ts, lossRange uint64) {
 	})
 }
 
-func (q *logWinQueue) updateStats(currentTime uint64) {
+func (q *logWindow) updateStats(currentTime uint64) {
 	if currentTime <= q.windowSize {
 		return
 	}

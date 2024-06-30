@@ -10,7 +10,7 @@ import (
 var _ = Describe("LogWin", func() {
 	Context("test", func() {
 		It("1 packets no update", func() {
-			logWin := NewLogWinQueue(10)
+			logWin := NewLogWindow(10)
 			logWin.NewMediaPacketRecieved(0, 0, 12, false, false)
 			Expect(logWin.lastPn).To(Equal(uint64(0)))
 
@@ -25,7 +25,7 @@ var _ = Describe("LogWin", func() {
 		})
 
 		It("3 packets no update", func() {
-			logWin := NewLogWinQueue(10)
+			logWin := NewLogWindow(10)
 
 			logWin.NewMediaPacketRecieved(0, 0, 12, false, false)
 			logWin.NewMediaPacketRecieved(1, 1, 8, true, false)
@@ -42,7 +42,7 @@ var _ = Describe("LogWin", func() {
 		})
 
 		It("3 packets with gap", func() {
-			logWin := NewLogWinQueue(10)
+			logWin := NewLogWindow(10)
 
 			logWin.NewMediaPacketRecieved(0, 0, 12, false, false)
 			logWin.NewMediaPacketRecieved(2, 1, 8, true, false)
@@ -59,7 +59,7 @@ var _ = Describe("LogWin", func() {
 		})
 
 		It("packets out of order", func() {
-			logWin := NewLogWinQueue(10)
+			logWin := NewLogWindow(10)
 
 			logWin.NewMediaPacketRecieved(0, 0, 12, false, false)
 			logWin.NewMediaPacketRecieved(2, 1, 8, true, false)
@@ -80,7 +80,7 @@ var _ = Describe("LogWin", func() {
 		})
 
 		It("3 packets with update", func() {
-			logWin := NewLogWinQueue(10)
+			logWin := NewLogWindow(10)
 			logWin.lastPn = 200
 
 			Expect(logWin.windowSize).To(Equal(uint64(10)))
@@ -111,7 +111,7 @@ var _ = Describe("LogWin", func() {
 		})
 
 		It("update with old packets", func() {
-			logWin := NewLogWinQueue(10)
+			logWin := NewLogWindow(10)
 			logWin.lastPn = 198
 
 			Expect(logWin.windowSize).To(Equal(uint64(10)))
@@ -144,7 +144,7 @@ var _ = Describe("LogWin", func() {
 		})
 
 		It("update with old packets and gaps", func() {
-			logWin := NewLogWinQueue(10)
+			logWin := NewLogWindow(10)
 			logWin.lastPn = 198
 
 			Expect(logWin.windowSize).To(Equal(uint64(10)))
@@ -177,7 +177,7 @@ var _ = Describe("LogWin", func() {
 		})
 
 		It("update with old packets and gaps that are removed", func() {
-			logWin := NewLogWinQueue(10)
+			logWin := NewLogWindow(10)
 			logWin.lastPn = 188
 
 			Expect(logWin.windowSize).To(Equal(uint64(10)))
@@ -210,7 +210,7 @@ var _ = Describe("LogWin", func() {
 		})
 
 		It("3 packets with queue buildup with update", func() {
-			logWin := NewLogWinQueue(10)
+			logWin := NewLogWindow(10)
 			logWin.lastPn = 200
 
 			Expect(logWin.windowSize).To(Equal(uint64(10)))
@@ -241,7 +241,7 @@ var _ = Describe("LogWin", func() {
 		})
 
 		It("update with old packets, gaps and skipped pns", func() {
-			logWin := NewLogWinQueue(10)
+			logWin := NewLogWindow(10)
 			logWin.lastPn = 198
 
 			Expect(logWin.windowSize).To(Equal(uint64(10)))

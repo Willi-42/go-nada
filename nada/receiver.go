@@ -16,7 +16,8 @@ type Receiver struct {
 	p_mark uint64 // estimated packet ECN marking ratio
 
 	config    *Config
-	logWindow *logWinQueue
+	logWindow *logWindow
+	delayWin  *delayWindow // used to filter delay samples
 }
 
 func NewReceiver(config Config) Receiver {
@@ -29,7 +30,8 @@ func NewReceiver(config Config) Receiver {
 		p_mark:    0,
 		r_recv:    0,
 		config:    configPopulated,
-		logWindow: NewLogWinQueue(logWinSize),
+		logWindow: NewLogWindow(logWinSize),
+		delayWin:  newDelayWin(15), // TODO: add to config
 	}
 }
 
@@ -59,9 +61,12 @@ func (r *Receiver) PacketArrived(
 	// TODO: recompute base delay from time to time e.g. 10min
 
 	// update queue delay
-	r.d_queue = d_fwd - r.d_base
-	// TODO: add min filter to d_queue
+	currDelay := d_fwd - r.d_base
+
+	// filter qdelay with min filter
 	// compare: https://www.rfc-editor.org/rfc/rfc8698.html#name-method-for-delay-loss-and-m
+	r.delayWin.addSample(currDelay)
+	r.d_queue = r.delayWin.minDelay()
 
 	// check for queue build-up
 	queueBuildup := false
