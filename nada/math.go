@@ -17,14 +17,10 @@ func aggregateCng(conf Config, d_tilde, p_mark, p_loss uint64) uint64 {
 	return d_tilde + uint64(dmark+dloss)
 }
 
-// nonLinWrapingQDelay calculates the non linear wrapping of the queueing dleay
-func nonLinWrapingQDelay(conf Config, d_queue uint64) uint64 {
-	if d_queue < conf.QTH {
-		return d_queue
-	} else {
-		tmp := -conf.LAMBDA * (float64(d_queue-conf.QTH) / float64(conf.QTH))
-		return conf.QTH * uint64(math.Exp(tmp))
-	}
+// nonLinWrapingQDelay calculates the non linear wrapping (d_tilde) of the queueing delay (d_queue)
+func nonLinWrapingQDelay(conf Config, qDelay uint64) uint64 {
+	exponent := -conf.LAMBDA * (float64(qDelay-conf.QTH) / float64(conf.QTH))
+	return conf.QTH * uint64(math.Exp(exponent))
 }
 
 // rampUpRate calculates the reference rate in rampUp mode
@@ -55,7 +51,7 @@ func gradualUpdateRate(
 		prevRefRate = 1 // prevent division by 0
 	}
 
-	// xOffset: congestion signal at equilibrium
+	// offset to the ideal congestion
 	xIdeal := conf.Priority * float64(conf.RefCongLevel) * (float64(conf.MaxRate) / float64(prevRefRate))
 	xOffset := float64(xCurr) - xIdeal
 

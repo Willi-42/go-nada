@@ -30,7 +30,7 @@ func (s *Sender) FeedbackReport(xCurr uint64, recvRate uint64, rampUpMode bool, 
 	// default feedback interval
 	delta := s.config.FeedbackDelta
 
-	// skip for first feeback
+	// skip for first feedback
 	if s.lastReport != 0 {
 		delta = currTime - s.lastReport
 	}

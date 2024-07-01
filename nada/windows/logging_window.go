@@ -170,12 +170,7 @@ func (q *LogWindow) addLossEvent(ts, lossRange uint64) {
 	})
 }
 
-func (q *LogWindow) addPacketEvent(
-	tsReceived uint64,
-	size uint64,
-	marked bool,
-	queueBuildup bool,
-) {
+func (q *LogWindow) addPacketEvent(tsReceived uint64, size uint64, marked bool, queueBuildup bool) {
 	q.elements = append(q.elements, packetEvent{
 		lost:         false,
 		marked:       marked,

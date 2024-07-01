@@ -101,14 +101,14 @@ func (r *Receiver) GenerateFeedback() (recvRate uint64, xCurr uint64, rampUpMode
 
 	// calculate non-linear warping of delay (d_tilde)
 	// if the last observed packet loss is within the expiration window of loss_exp
-	WrappedDelay := r.qDelay
+	wrappedDelay := r.qDelay
 
-	if r.logWin.PacketsSinceLoss() <= lossExp {
-		WrappedDelay = nonLinWrapingQDelay(*r.config, r.qDelay)
+	if r.logWin.PacketsSinceLoss() <= lossExp && r.qDelay >= r.config.QTH {
+		wrappedDelay = nonLinWrapingQDelay(*r.config, r.qDelay)
 	}
 
 	// calculate aggregate congestion signal x_curr
-	xCurr = aggregateCng(*r.config, WrappedDelay, r.markingRatio, r.lossRatio)
+	xCurr = aggregateCng(*r.config, wrappedDelay, r.markingRatio, r.lossRatio)
 
 	// determine mode of rate adaptation for sender: rmode
 	// if no packet loss in logwin and no queue build up in current LOGWIN
