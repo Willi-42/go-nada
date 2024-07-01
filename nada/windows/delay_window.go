@@ -19,7 +19,7 @@ func (d *DelayWindow) AddSample(delay uint64) {
 
 	d.delaySampls = append(d.delaySampls, delay)
 
-	// drop oldest interval
+	// drop oldest sample
 	if len(d.delaySampls) > d.size {
 		d.delaySampls = d.delaySampls[1:]
 	}

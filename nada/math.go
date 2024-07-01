@@ -17,8 +17,8 @@ func aggregateCng(conf Config, d_tilde, p_mark, p_loss uint64) uint64 {
 	return d_tilde + uint64(dmark+dloss)
 }
 
-// nonLinWrappingQDelay calculates the non linear wrapping of the queueing dleay
-func nonLinWrappingQDelay(conf Config, d_queue uint64) uint64 {
+// nonLinWrapingQDelay calculates the non linear wrapping of the queueing dleay
+func nonLinWrapingQDelay(conf Config, d_queue uint64) uint64 {
 	if d_queue < conf.QTH {
 		return d_queue
 	} else {
@@ -62,12 +62,12 @@ func gradualUpdateRate(
 	// current congestion signal change
 	xDiff := int64(xCurr) - int64(xPrev)
 
-	calc1 := conf.Kappa * (float64(feedbackDelta) / float64(conf.Tau))
-	calc1 *= (xOffset / float64(conf.Tau)) * float64(prevRefRate)
+	term1 := conf.Kappa * (float64(feedbackDelta) / float64(conf.Tau))
+	term1 *= (xOffset / float64(conf.Tau)) * float64(prevRefRate)
 
-	calc2 := conf.Kappa * conf.Eta * (float64(xDiff) / float64(conf.Tau)) * float64(prevRefRate)
+	term2 := conf.Kappa * conf.Eta * (float64(xDiff) / float64(conf.Tau)) * float64(prevRefRate)
 
-	res := int64(prevRefRate) - int64(calc1) - int64(calc2)
+	res := int64(prevRefRate) - int64(term1) - int64(term2)
 
 	// TODO: why can there be a negative result
 	if res < 0 {

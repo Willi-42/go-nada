@@ -17,7 +17,6 @@ func NewSender(config Config) Sender {
 
 	return Sender{
 		prevRate: configPopulated.MinRate,
-		xPerv:    0,
 		config:   configPopulated,
 	}
 }
@@ -25,9 +24,8 @@ func NewSender(config Config) Sender {
 // FeedbackReport calculates the new rate with the feedback from the receiver.
 // xCurr, recvRate, rampUpMode are from the receiver feedback.
 // rtt is the current rtt in micro seconds.
-func (s *Sender) FeedbackReport(xCurr uint64, recvRate uint64, rampUpMode bool, rtt uint64) uint64 {
+func (s *Sender) FeedbackReport(xCurr uint64, recvRate uint64, rampUpMode bool, rtt uint64) (newRate uint64) {
 	currTime := uint64(time.Now().UnixMicro())
-	newRate := uint64(0)
 
 	// default feedback interval
 	delta := s.config.FeedbackDelta
@@ -43,7 +41,7 @@ func (s *Sender) FeedbackReport(xCurr uint64, recvRate uint64, rampUpMode bool, 
 		newRate = gradualUpdateRate(*s.config, s.prevRate, xCurr, s.xPerv, delta)
 	}
 
-	// clip rate r_ref within the range of minimum rate (RMIN) and maximum rate (RMAX).
+	// clip rate within minimum rate and maximum rate
 	newRate = max(s.config.MinRate, newRate)
 	newRate = min(s.config.MaxRate, newRate)
 

@@ -138,7 +138,7 @@ func (q *LogWindow) UpdateStats(currentTime uint64) {
 	}
 
 	// drop old elements
-	q.elements = q.elements[discardIndex:] // TODO: very inefficient
+	q.elements = q.elements[discardIndex:] // TODO: maybe inefficient
 }
 
 func (q *LogWindow) checkForGaps(pn, tsReceived uint64) {

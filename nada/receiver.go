@@ -8,14 +8,12 @@ import (
 
 // Receiver: all timestamps are in microseconds
 type Receiver struct {
-	d_base  uint64 // estimated baseline delay
-	d_tilde uint64 // Equivalent delay after non-linear warping
-	d_queue uint64 // estimated queuing delay
-	r_recv  uint64 // receiving rate
+	baseDelay uint64 // estimated baseline delay (d_base)
+	qDelay    uint64 // estimated queuing delay (d_queue)
+	recvRate  uint64 // receiving rate (r_recv)
 
-	// packet stats
-	p_loss uint64 // estimated packet loss ratio
-	p_mark uint64 // estimated packet ECN marking ratio
+	lossRatio    uint64 // estimated packet loss ratio (p_loss)
+	markingRatio uint64 // estimated packet ECN marking ratio (p_mark)
 
 	config   *Config
 	logWin   *windows.LogWindow
@@ -27,13 +25,10 @@ func NewReceiver(config Config) Receiver {
 	logWinSize := configPopulated.LogWin
 
 	return Receiver{
-		d_base:   math.MaxUint64, // set to infinity
-		p_loss:   0,
-		p_mark:   0,
-		r_recv:   0,
-		config:   configPopulated,
-		logWin:   windows.NewLogWindow(logWinSize, 8), // TODO: add to config
-		delayWin: windows.NewDelayWindow(15),          // TODO: add to config
+		baseDelay: math.MaxUint64, // set to infinity
+		config:    configPopulated,
+		logWin:    windows.NewLogWindow(logWinSize, 8), // TODO: add to config
+		delayWin:  windows.NewDelayWindow(15),          // TODO: add to config
 	}
 }
 
@@ -55,24 +50,25 @@ func (r *Receiver) PacketArrived(
 	packetSize uint64,
 	marked bool,
 ) {
-	d_fwd := recvTs - sentTs // current one-way delay
+	// current one-way delay (d_fwd)
+	oneWayDelay := recvTs - sentTs
 
 	// update base delay
-	r.d_base = min(r.d_base, d_fwd)
+	r.baseDelay = min(r.baseDelay, oneWayDelay)
 
 	// TODO: recompute base delay from time to time e.g. 10min
 
 	// update queue delay
-	currDelay := d_fwd - r.d_base
+	currDelay := oneWayDelay - r.baseDelay
 
 	// filter qdelay with min filter
 	// compare: https://www.rfc-editor.org/rfc/rfc8698.html#name-method-for-delay-loss-and-m
 	r.delayWin.AddSample(currDelay)
-	r.d_queue = r.delayWin.MinDelay()
+	r.qDelay = r.delayWin.MinDelay()
 
 	// check for queue build-up
 	queueBuildup := false
-	if r.d_queue >= r.config.QEPS {
+	if r.qDelay >= r.config.QEPS {
 		queueBuildup = true
 	}
 
@@ -82,46 +78,43 @@ func (r *Receiver) PacketArrived(
 
 	// calculate loss/marking ratio
 	totoalPackets := r.logWin.ArrivedPackets() + r.logWin.LostPackets()
-	r.p_loss = smoothedRatio(*r.config, r.logWin.LostPackets(), totoalPackets, r.p_loss)
-	r.p_mark = smoothedRatio(*r.config, r.logWin.MarkedPackets(), totoalPackets, r.p_mark)
+	r.lossRatio = smoothedRatio(*r.config, r.logWin.LostPackets(), totoalPackets, r.lossRatio)
+	r.markingRatio = smoothedRatio(*r.config, r.logWin.MarkedPackets(), totoalPackets, r.markingRatio)
 
 	// update reciving rate
 	// TODO: this might overflow
-	recvRateMicro := r.logWin.ReceivedBits() * 1000000
+	recvBitsSeconds := r.logWin.ReceivedBits() * 1000000 // to convert micro seconds to seconds
 
-	r.r_recv = recvRateMicro / r.config.LogWin
+	r.recvRate = recvBitsSeconds / r.config.LogWin
 }
 
 // GenerateFeedback: On time to send a new feedback report (t_curr - t_last > DELTA)
 // Returns reciving rate, aggregated congestion signal and rampUpMode.
-func (r *Receiver) GenerateFeedback() (uint64, uint64, bool) {
+func (r *Receiver) GenerateFeedback() (recvRate uint64, xCurr uint64, rampUpMode bool) {
+	recvRate = r.recvRate
 
-	// loss_exp is configured to self-scale with the average packet loss
-	// interval loss_int with a multiplier MULTILOSS
+	// loss_exp self-scales with the average packet loss interval with a multiplier MULTILOSS
 	// Threshold value for setting the last observed packet loss to expiration.
 	// Measured in terms of packet counts.
-	loss_int := r.logWin.AvgLossInterval()
-	loss_exp := uint64(r.config.MULTILOSS * loss_int)
+	avgLossInt := r.logWin.AvgLossInterval()
+	lossExp := uint64(r.config.MULTILOSS * avgLossInt)
 
-	// calculate non-linear warping of delay d_tilde if packet loss exists
-	// Only if the last observed packet loss is within the expiration
-	// window of loss_exp (measured in terms of packet counts), we apply non-lin warapping
-	if r.logWin.PacketsSinceLoss() <= loss_exp {
-		r.d_tilde = nonLinWrappingQDelay(*r.config, r.d_queue)
-	} else {
-		r.d_tilde = r.d_queue
+	// calculate non-linear warping of delay (d_tilde)
+	// if the last observed packet loss is within the expiration window of loss_exp
+	WrappedDelay := r.qDelay
+
+	if r.logWin.PacketsSinceLoss() <= lossExp {
+		WrappedDelay = nonLinWrapingQDelay(*r.config, r.qDelay)
 	}
 
 	// calculate aggregate congestion signal x_curr
-	x_curr := aggregateCng(*r.config, r.d_tilde, r.p_mark, r.p_loss)
+	xCurr = aggregateCng(*r.config, WrappedDelay, r.markingRatio, r.lossRatio)
 
 	// determine mode of rate adaptation for sender: rmode
-	// if no packet loss in logwin and no queue build up
-	// for all previous delay samples within the observation window LOGWIN
-	rampUpMode := false
+	// if no packet loss in logwin and no queue build up in current LOGWIN
 	if r.logWin.LostPackets() == 0 && !r.logWin.QueueBuildup() {
 		rampUpMode = true
 	}
 
-	return r.r_recv, x_curr, rampUpMode
+	return
 }
