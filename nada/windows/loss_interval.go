@@ -35,11 +35,11 @@ func newLossIntervall(maxsize int) *lossInterval {
 // addLoss creates new loss interval
 func (l *lossInterval) addLoss(lossGap uint64) {
 
-	l.intervals = append(l.intervals, lossGap)
+	l.intervals = append([]uint64{lossGap}, l.intervals...)
 
 	// drop oldest interval
 	if len(l.intervals) >= l.maxsize {
-		l.intervals = l.intervals[1:]
+		l.intervals = l.intervals[:l.maxsize-1]
 	}
 }
 

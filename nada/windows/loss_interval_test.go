@@ -30,14 +30,20 @@ var _ = Describe("Loss Intervall", func() {
 				lossInt.addPacket()
 			}
 
+			Expect(lossInt.intervals).To(Equal([]uint64{}))
+
 			lossInt.addLoss(2)
+			Expect(lossInt.intervals).To(Equal([]uint64{2}))
+
 			lossInt.addLoss(32)
+			Expect(lossInt.intervals).To(Equal([]uint64{32, 2}))
 
 			for i := 0; i < 5; i++ {
 				lossInt.addPacket()
 			}
 
 			lossInt.addLoss(3)
+			Expect(lossInt.intervals).To(Equal([]uint64{3, 37}))
 
 			res := lossInt.avgLossInt()
 
