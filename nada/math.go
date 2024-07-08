@@ -20,7 +20,7 @@ func aggregateCng(conf Config, d_tilde, p_mark, p_loss uint64) uint64 {
 // nonLinWrapingQDelay calculates the non linear wrapping (d_tilde) of the queueing delay (d_queue)
 func nonLinWrapingQDelay(conf Config, qDelay uint64) uint64 {
 	exponent := -conf.LAMBDA * (float64(qDelay-conf.QTH) / float64(conf.QTH))
-	return conf.QTH * uint64(math.Exp(exponent))
+	return uint64(float64(conf.QTH) * math.Exp(exponent))
 }
 
 // rampUpRate calculates the reference rate in rampUp mode

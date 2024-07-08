@@ -1,6 +1,8 @@
 package windows
 
-import "log"
+import (
+	"log"
+)
 
 type packetEvent struct {
 	lost         bool
@@ -25,9 +27,6 @@ type LogWindow struct {
 	lostPackets     uint64
 	receivedBits    uint64
 	queueBuildupCnt uint64 // number of times a queue buildup was detected
-
-	// general stats
-	packetsSinceLoss uint64 // number of packets since the last loss occurred
 }
 
 // NewLogWindow creates a new logging window queue.
@@ -56,8 +55,8 @@ func (q *LogWindow) ReceivedBits() uint64 {
 	return q.receivedBits
 }
 
-func (q *LogWindow) PacketsSinceLoss() uint64 {
-	return q.packetsSinceLoss
+func (q *LogWindow) PacketsSinceLoss() (uint64, bool /* got loss*/) {
+	return q.lossInts.currentInt()
 }
 
 // QueueBuildup in current window?
@@ -88,11 +87,15 @@ func (q *LogWindow) NewMediaPacketRecieved(
 		return
 	}
 
+	gotGap := q.checkForGaps(pn, tsReceived)
+	// no gap -> no loss -> add to prev interval
+	if !gotGap {
+		q.lossInts.addPacket()
+	}
+
 	q.addPacketEvent(tsReceived, size, marked, queueBuildup)
 	q.receivedBits += size
 	q.arrivedPackets++
-	q.packetsSinceLoss++
-	q.lossInts.addPacket()
 
 	if marked {
 		q.markedPackets++
@@ -101,8 +104,6 @@ func (q *LogWindow) NewMediaPacketRecieved(
 	if queueBuildup {
 		q.queueBuildupCnt++
 	}
-
-	q.checkForGaps(pn, tsReceived)
 
 	q.lastPn = pn
 }
@@ -141,24 +142,27 @@ func (q *LogWindow) UpdateStats(currentTime uint64) {
 	q.elements = q.elements[discardIndex:] // TODO: maybe inefficient
 }
 
-func (q *LogWindow) checkForGaps(pn, tsReceived uint64) {
+func (q *LogWindow) checkForGaps(pn, tsReceived uint64) bool {
 	// skip gap calc for first packet
 	if pn == 0 {
-		return
+		return false
 	}
 
 	// missing packets are considered lost
 	gapSize := pn - q.lastPn - 1
+	gotGap := false
 
 	// packet gap
 	if gapSize != 0 {
+		gotGap = true
 		log.Printf("got gap: %v - %v", q.lastPn, pn)
 
 		q.addLossEvent(tsReceived, gapSize)
 		q.lostPackets += gapSize
-		q.packetsSinceLoss = 1
-		q.lossInts.addLoss(gapSize)
+		q.lossInts.addLoss(gapSize + 1) // + the current packet
 	}
+
+	return gotGap
 }
 
 func (q *LogWindow) addLossEvent(ts, lossRange uint64) {

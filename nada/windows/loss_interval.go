@@ -53,6 +53,15 @@ func (l *lossInterval) addPacket() {
 	l.intervals[0]++
 }
 
+// currentInt returns the current interval.
+func (l *lossInterval) currentInt() (uint64 /* first interval */, bool /* loss occoured*/) {
+	if len(l.intervals) == 0 {
+		return 0, false
+	}
+
+	return l.intervals[0], true
+}
+
 // Measured average loss interval in packet count
 func (l *lossInterval) avgLossInt() float64 {
 	i_tot0 := float64(0)
@@ -82,5 +91,5 @@ func (l *lossInterval) avgLossInt() float64 {
 	i_tot := max(i_tot0, i_tot1)
 	i_mean := i_tot / w_tot
 
-	return 1 / i_mean
+	return i_mean
 }
