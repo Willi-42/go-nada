@@ -108,6 +108,12 @@ func (r *Receiver) GenerateFeedback() (recvRate uint64, xCurr uint64, rampUpMode
 }
 
 func (r *Receiver) wrapQDelay() uint64 {
+	updatedDelay := r.qDelay
+
+	if r.config.DeactivateQDelayWrapping {
+		return updatedDelay
+	}
+
 	// loss_exp self-scales with the average packet loss interval with a multiplier MULTILOSS
 	// Threshold value for setting the last observed packet loss to expiration.
 	// Measured in terms of packet counts.
@@ -116,13 +122,12 @@ func (r *Receiver) wrapQDelay() uint64 {
 
 	// calculate non-linear warping of delay (d_tilde)
 	// if the last observed packet loss is within the expiration window of loss_exp
-	wrappedDelay := r.qDelay
 
 	packtesSinceLoss, gotLoss := r.logWin.PacketsSinceLoss()
 
 	if gotLoss && packtesSinceLoss <= lossExp && r.qDelay >= r.config.QTH {
-		wrappedDelay = nonLinWrapingQDelay(*r.config, r.qDelay)
+		updatedDelay = nonLinWrapingQDelay(*r.config, r.qDelay)
 	}
 
-	return wrappedDelay
+	return updatedDelay
 }

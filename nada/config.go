@@ -21,9 +21,6 @@ const (
 	PMRREF    float64 = 0.01
 	DLOSS     uint64  = 10 // ms
 	DMARK     uint64  = 2  // ms
-	FPS       uint64  = 30
-	BETA_S    float64 = 0.1
-	BETA_V    float64 = 0.1
 	ALPHA     float64 = 0.1
 )
 
@@ -48,10 +45,9 @@ type Config struct {
 	PMRREF        float64 // Reference packet marking ratio
 	DLOSS         uint64  // Reference delay penalty for loss when packet loss ratio is at PLRREF
 	DMARK         uint64  // Reference delay penalty for ECN marking when packet marking is at PM
-	FPS           uint64  // Frame rate of incoming video
-	BETA_S        float64 // Scaling parameter for modulating outgoing sending rate
-	BETA_V        float64 // Scaling parameter for modulating video encoder target rate
 	ALPHA         float64 // Smoothing factor in exponential smoothing of packet loss and marking ratios
+
+	DeactivateQDelayWrapping bool // do not apply wrapping of qdely
 }
 
 func populateConfig(c *Config) *Config {
@@ -78,11 +74,9 @@ func populateConfig(c *Config) *Config {
 	c.PMRREF = setDefaultFloat(c.PMRREF, PMRREF)
 	c.DLOSS = setDefaultMs(c.DLOSS, DLOSS)
 	c.DMARK = setDefaultMs(c.DMARK, DMARK)
-	c.FPS = setDefaultInt(c.FPS, FPS)
-
-	c.BETA_S = setDefaultFloat(c.BETA_S, BETA_S)
-	c.BETA_V = setDefaultFloat(c.BETA_V, BETA_V)
 	c.ALPHA = setDefaultFloat(c.ALPHA, ALPHA)
+
+	// DeactivateQDelayWrapping is false if not given == default
 
 	return c
 }
