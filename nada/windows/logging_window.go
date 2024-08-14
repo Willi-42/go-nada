@@ -94,11 +94,7 @@ func (q *LogWindow) NewMediaPacketRecieved(
 		return
 	}
 
-	gotGap := q.checkForGaps(pn, tsReceived)
-	// no gap -> no loss -> add to prev interval
-	if !gotGap {
-		q.lossInts.addPacket()
-	}
+	q.checkForGaps(pn, tsReceived)
 
 	q.NewMediaPacketRecievedNoGapCheck(pn, tsReceived, size, marked, queueBuildup)
 }
@@ -159,25 +155,21 @@ func (q *LogWindow) UpdateStats(currentTime uint64) {
 	q.elements = q.elements[discardIndex:] // TODO: maybe inefficient
 }
 
-func (q *LogWindow) checkForGaps(pn, tsReceived uint64) bool {
+func (q *LogWindow) checkForGaps(pn, tsReceived uint64) {
 	// skip gap calc for first packet
 	if pn == 0 {
-		return false
+		return
 	}
 
 	// missing packets are considered lost
 	gapSize := pn - q.lastPn - 1
-	gotGap := false
 
 	// packet gap
 	if gapSize != 0 {
-		gotGap = true
 		log.Printf("got gap: %v - %v", q.lastPn, pn)
 
 		q.addLossEvent(tsReceived, gapSize)
 	}
-
-	return gotGap
 }
 
 func (q *LogWindow) addLossEvent(ts, gapSize uint64) {
@@ -188,7 +180,7 @@ func (q *LogWindow) addLossEvent(ts, gapSize uint64) {
 		marked:     false,
 	})
 	q.lostPackets += gapSize
-	q.lossInts.addLoss(gapSize + 1) // + the current packet
+	q.lossInts.addLoss(gapSize)
 }
 
 func (q *LogWindow) addPacketEvent(tsReceived uint64, size uint64, marked bool, queueBuildup bool) {
@@ -199,4 +191,6 @@ func (q *LogWindow) addPacketEvent(tsReceived uint64, size uint64, marked bool, 
 		tsReceived:   tsReceived,
 		queueBuildup: queueBuildup,
 	})
+
+	q.lossInts.addPacket()
 }
