@@ -7,15 +7,15 @@ import (
 )
 
 // smoothedRatio calculates the smoothed loss/marking ratio
-func smoothedRatio(conf Config, currentCnt, totoalCnt, prevRatio uint64) uint64 {
+func smoothedRatio(conf Config, currentCnt uint64, totoalCnt uint64, prevRatio float64) float64 {
 	currRatio := float64(currentCnt) / float64(totoalCnt)
-	return uint64(conf.ALPHA*currRatio + (1-conf.ALPHA)*float64(prevRatio))
+	return conf.ALPHA*currRatio + (1-conf.ALPHA)*prevRatio
 }
 
 // aggregateCng calculates the aggregated congestion signal (x_curr)
-func aggregateCng(conf Config, d_tilde, p_mark, p_loss uint64) uint64 {
-	dmark := float64(conf.DMARK) * math.Pow(float64(p_mark)/conf.PMRREF, 2)
-	dloss := float64(conf.DLOSS) * math.Pow(float64(p_loss)/conf.PLRREF, 2)
+func aggregateCng(conf Config, d_tilde uint64, p_mark, p_loss float64) uint64 {
+	dmark := float64(conf.DMARK) * math.Pow(p_mark/conf.PMRREF, 2)
+	dloss := float64(conf.DLOSS) * math.Pow(p_loss/conf.PLRREF, 2)
 	return d_tilde + uint64(dmark+dloss)
 }
 

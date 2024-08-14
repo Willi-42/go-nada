@@ -12,8 +12,8 @@ type Receiver struct {
 	qDelay    uint64 // estimated queuing delay (d_queue)
 	recvRate  uint64 // receiving rate (r_recv)
 
-	lossRatio    uint64 // estimated packet loss ratio (p_loss)
-	markingRatio uint64 // estimated packet ECN marking ratio (p_mark)
+	lossRatio    float64 // estimated packet loss ratio (p_loss)
+	markingRatio float64 // estimated packet ECN marking ratio (p_mark)
 
 	config   *Config
 	logWin   *windows.LogWindow

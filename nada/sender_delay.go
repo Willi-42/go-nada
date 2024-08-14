@@ -12,8 +12,8 @@ type DelaySender struct {
 	xPerv      uint64 // Previous value of aggregate congestion signal
 	lastReport uint64 // in micro sec
 
-	lossRatio    uint64 // estimated packet loss ratio (p_loss)
-	markingRatio uint64 // estimated packet ECN marking ratio (p_mark)
+	lossRatio    float64 // estimated packet loss ratio (p_loss)
+	markingRatio float64 // estimated packet ECN marking ratio (p_mark)
 
 	mtx sync.Mutex
 
@@ -70,9 +70,6 @@ func (s *DelaySender) FeedbackReport(recvRate uint64, delay uint64, queueBuildup
 	if s.lastReport != 0 {
 		delta = currTime - s.lastReport
 	}
-
-	// log.Printf("preUpdate: otal %v, loss %v, marked %v", s.logWin.ArrivedPackets(),
-	// 	s.logWin.LostPackets(), s.logWin.MarkedPackets())
 
 	// update congestion values
 	updatedDelay := wrapQDelay(*s.config, delay, s.logWin)
