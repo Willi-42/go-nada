@@ -2,6 +2,8 @@ package nada
 
 import (
 	"math"
+
+	"github.com/Willi-42/go-nada/nada/windows"
 )
 
 // smoothedRatio calculates the smoothed loss/marking ratio
@@ -21,6 +23,31 @@ func aggregateCng(conf Config, d_tilde, p_mark, p_loss uint64) uint64 {
 func nonLinWrapingQDelay(conf Config, qDelay uint64) uint64 {
 	exponent := -conf.LAMBDA * (float64(qDelay-conf.QTH) / float64(conf.QTH))
 	return uint64(float64(conf.QTH) * math.Exp(exponent))
+}
+
+func wrapQDelay(conf Config, qDelay uint64, logWin *windows.LogWindow) uint64 {
+	updatedDelay := qDelay
+
+	if conf.DeactivateQDelayWrapping {
+		return updatedDelay
+	}
+
+	// loss_exp self-scales with the average packet loss interval with a multiplier MULTILOSS
+	// Threshold value for setting the last observed packet loss to expiration.
+	// Measured in terms of packet counts.
+	avgLossInt := logWin.AvgLossInterval()
+	lossExp := uint64(conf.MULTILOSS * avgLossInt)
+
+	// calculate non-linear warping of delay (d_tilde)
+	// if the last observed packet loss is within the expiration window of loss_exp
+
+	packtesSinceLoss, gotLoss := logWin.PacketsSinceLoss()
+
+	if gotLoss && packtesSinceLoss <= lossExp && qDelay >= conf.QTH {
+		updatedDelay = nonLinWrapingQDelay(conf, qDelay)
+	}
+
+	return updatedDelay
 }
 
 // rampUpRate calculates the reference rate in rampUp mode

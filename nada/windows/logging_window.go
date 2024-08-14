@@ -73,6 +73,13 @@ func (q *LogWindow) AddEmptyPacket(pn, tsReceived uint64) {
 	q.lastPn = pn
 }
 
+// AddLostPacket to register a loss if detected by app.
+// For loss detection at sender side
+func (q *LogWindow) AddLostPacket(pn, tsReceived uint64) {
+	q.addLossEvent(tsReceived, 1)
+	q.lastPn = pn
+}
+
 func (q *LogWindow) NewMediaPacketRecieved(
 	pn uint64,
 	tsReceived uint64,
@@ -93,6 +100,16 @@ func (q *LogWindow) NewMediaPacketRecieved(
 		q.lossInts.addPacket()
 	}
 
+	q.NewMediaPacketRecievedNoGapCheck(pn, tsReceived, size, marked, queueBuildup)
+}
+
+func (q *LogWindow) NewMediaPacketRecievedNoGapCheck(
+	pn uint64,
+	tsReceived uint64,
+	size uint64,
+	marked bool,
+	queueBuildup bool,
+) {
 	q.addPacketEvent(tsReceived, size, marked, queueBuildup)
 	q.receivedBits += size
 	q.arrivedPackets++
@@ -158,20 +175,20 @@ func (q *LogWindow) checkForGaps(pn, tsReceived uint64) bool {
 		log.Printf("got gap: %v - %v", q.lastPn, pn)
 
 		q.addLossEvent(tsReceived, gapSize)
-		q.lostPackets += gapSize
-		q.lossInts.addLoss(gapSize + 1) // + the current packet
 	}
 
 	return gotGap
 }
 
-func (q *LogWindow) addLossEvent(ts, lossRange uint64) {
+func (q *LogWindow) addLossEvent(ts, gapSize uint64) {
 	q.elements = append(q.elements, packetEvent{
 		lost:       true,
 		tsReceived: ts,
-		lossRange:  lossRange,
+		lossRange:  gapSize,
 		marked:     false,
 	})
+	q.lostPackets += gapSize
+	q.lossInts.addLoss(gapSize + 1) // + the current packet
 }
 
 func (q *LogWindow) addPacketEvent(tsReceived uint64, size uint64, marked bool, queueBuildup bool) {

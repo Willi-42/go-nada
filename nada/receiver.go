@@ -93,7 +93,7 @@ func (r *Receiver) PacketArrived(
 func (r *Receiver) GenerateFeedback() (recvRate uint64, xCurr uint64, rampUpMode bool) {
 	recvRate = r.recvRate
 
-	wrappedDelay := r.wrapQDelay()
+	wrappedDelay := wrapQDelay(*r.config, r.qDelay, r.logWin)
 
 	// calculate aggregate congestion signal x_curr
 	xCurr = aggregateCng(*r.config, wrappedDelay, r.markingRatio, r.lossRatio)
@@ -107,27 +107,11 @@ func (r *Receiver) GenerateFeedback() (recvRate uint64, xCurr uint64, rampUpMode
 	return
 }
 
-func (r *Receiver) wrapQDelay() uint64 {
-	updatedDelay := r.qDelay
+// GenerateDelayFeedback for loss detection at sender
+func (r *Receiver) GenerateDelayFeedback() (recvRate uint64, delay uint64, queueBuildup bool) {
+	recvRate = r.recvRate
+	delay = r.qDelay
+	queueBuildup = r.logWin.QueueBuildup()
 
-	if r.config.DeactivateQDelayWrapping {
-		return updatedDelay
-	}
-
-	// loss_exp self-scales with the average packet loss interval with a multiplier MULTILOSS
-	// Threshold value for setting the last observed packet loss to expiration.
-	// Measured in terms of packet counts.
-	avgLossInt := r.logWin.AvgLossInterval()
-	lossExp := uint64(r.config.MULTILOSS * avgLossInt)
-
-	// calculate non-linear warping of delay (d_tilde)
-	// if the last observed packet loss is within the expiration window of loss_exp
-
-	packtesSinceLoss, gotLoss := r.logWin.PacketsSinceLoss()
-
-	if gotLoss && packtesSinceLoss <= lossExp && r.qDelay >= r.config.QTH {
-		updatedDelay = nonLinWrapingQDelay(*r.config, r.qDelay)
-	}
-
-	return updatedDelay
+	return recvRate, delay, queueBuildup
 }
