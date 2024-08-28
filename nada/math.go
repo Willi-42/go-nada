@@ -16,6 +16,11 @@ func smoothedRatio(conf Config, currentCnt uint64, totoalCnt uint64, prevRatio f
 func aggregateCng(conf Config, d_tilde uint64, p_mark, p_loss float64) uint64 {
 	dmark := float64(conf.DMARK) * math.Pow(p_mark/conf.PMRREF, 2)
 	dloss := float64(conf.DLOSS) * math.Pow(p_loss/conf.PLRREF, 2)
+
+	// max penalty caused by losses
+	dloss = min(dloss, 500000)
+	// TODO: max penalty for dmark
+
 	return d_tilde + uint64(dmark+dloss)
 }
 

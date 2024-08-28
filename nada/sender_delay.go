@@ -59,7 +59,7 @@ func (r *DelaySender) LostPacket(pn, tsReceived uint64) {
 // FeedbackReport calculates the new rate with the feedback from the receiver.
 // recvRate, delay, queueBuildup are from the receiver feedback.
 // rtt is the current rtt in micro seconds.
-func (s *DelaySender) FeedbackReport(recvRate uint64, delay uint64, queueBuildup bool, rtt uint64) (newRate uint64) {
+func (s *DelaySender) FeedbackReport(recvRate uint64, delay uint64, queueBuildup bool, rtt uint64) (newRate, xCurr uint64) { // TODO: remove xcurr from return
 	s.mtx.Lock()
 	currTime := uint64(time.Now().UnixMicro())
 
@@ -84,7 +84,7 @@ func (s *DelaySender) FeedbackReport(recvRate uint64, delay uint64, queueBuildup
 	s.lossRatio = smoothedRatio(*s.config, lostPackets, totoalPackets, s.lossRatio)
 	s.markingRatio = smoothedRatio(*s.config, markedpackets, totoalPackets, s.markingRatio)
 
-	xCurr := aggregateCng(*s.config, updatedDelay, s.markingRatio, s.lossRatio)
+	xCurr = aggregateCng(*s.config, updatedDelay, s.markingRatio, s.lossRatio)
 
 	// calc new rate
 	if lostPackets == 0 && !queueBuildup {
@@ -102,5 +102,5 @@ func (s *DelaySender) FeedbackReport(recvRate uint64, delay uint64, queueBuildup
 	s.xPerv = xCurr
 	s.lastReport = currTime
 
-	return newRate
+	return newRate, xCurr
 }
