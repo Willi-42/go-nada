@@ -7,7 +7,7 @@ import (
 	"github.com/Willi-42/go-nada/nada/windows"
 )
 
-type DelaySender struct {
+type SenderSLD struct {
 	prevRate   uint64 // Previous reference rate based on network congestion
 	xPerv      uint64 // Previous value of aggregate congestion signal
 	lastReport uint64 // in micro sec
@@ -21,11 +21,11 @@ type DelaySender struct {
 	logWin *windows.LogWindow
 }
 
-func NewDelaySender(config Config) DelaySender {
+func NewSenderSLD(config Config) SenderSLD {
 	configPopulated := populateConfig(&config)
 	logWinSize := configPopulated.LogWin
 
-	return DelaySender{
+	return SenderSLD{
 		prevRate: configPopulated.MinRate,
 		config:   configPopulated,
 		logWin:   windows.NewLogWindow(logWinSize, 8), // TODO: add to config
@@ -35,7 +35,7 @@ func NewDelaySender(config Config) DelaySender {
 // PacketDelivered register a delivered packet.
 // QueueBuildUp is calculated at receiver.
 // Use arrival ts of Ack for the LogWindow.
-func (s *DelaySender) PacketDelivered(
+func (s *SenderSLD) PacketDelivered(
 	packetNumber uint64,
 	ackTs uint64,
 	packetSize uint64,
@@ -50,7 +50,7 @@ func (s *DelaySender) PacketDelivered(
 }
 
 // LostPacket registers a lost packet
-func (r *DelaySender) LostPacket(pn, tsReceived uint64) {
+func (r *SenderSLD) LostPacket(pn, tsReceived uint64) {
 	r.mtx.Lock()
 	r.logWin.AddLostPacket(pn, tsReceived)
 	r.mtx.Unlock()
@@ -59,7 +59,7 @@ func (r *DelaySender) LostPacket(pn, tsReceived uint64) {
 // FeedbackReport calculates the new rate with the feedback from the receiver.
 // recvRate, delay, queueBuildup are from the receiver feedback.
 // rtt is the current rtt in micro seconds.
-func (s *DelaySender) FeedbackReport(recvRate uint64, delay uint64, queueBuildup bool, rtt uint64) (newRate, xCurr uint64) { // TODO: remove xcurr from return
+func (s *SenderSLD) FeedbackReport(recvRate uint64, delay uint64, queueBuildup bool, rtt uint64) (newRate, xCurr uint64) { // TODO: remove xcurr from return
 	s.mtx.Lock()
 	currTime := uint64(time.Now().UnixMicro())
 

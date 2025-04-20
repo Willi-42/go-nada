@@ -32,10 +32,10 @@ func NewReceiver(config Config) Receiver {
 	}
 }
 
-// PacketWithoutTsArrived can be used to register the
+// PacketArrivedWithoutTs can be used to register the
 // arrival of packets without a ts, e.g. ack only packets.
 // Have to be registered, otherwise considered lost.
-func (r *Receiver) PacketWithoutTsArrived(packetNumber, recvTs uint64) {
+func (r *Receiver) PacketArrivedWithoutTs(packetNumber, recvTs uint64) {
 	r.logWin.AddEmptyPacket(packetNumber, recvTs)
 }
 
@@ -88,9 +88,9 @@ func (r *Receiver) PacketArrived(
 	r.recvRate = recvBitsSeconds / r.config.LogWin
 }
 
-// GenerateFeedback: On time to send a new feedback report (t_curr - t_last > DELTA)
+// GenerateFeedbackRLD: On time to send a new feedback report (t_curr - t_last > DELTA)
 // Returns reciving rate, aggregated congestion signal and rampUpMode.
-func (r *Receiver) GenerateFeedback() (recvRate uint64, xCurr uint64, rampUpMode bool) {
+func (r *Receiver) GenerateFeedbackRLD() (recvRate uint64, xCurr uint64, rampUpMode bool) {
 	recvRate = r.recvRate
 
 	wrappedDelay := wrapQDelay(*r.config, r.qDelay, r.logWin)
@@ -107,8 +107,8 @@ func (r *Receiver) GenerateFeedback() (recvRate uint64, xCurr uint64, rampUpMode
 	return
 }
 
-// GenerateDelayFeedback for loss detection at sender
-func (r *Receiver) GenerateDelayFeedback() (recvRate uint64, delay uint64, queueBuildup bool) {
+// GenerateFeedbackSLD for loss detection at sender
+func (r *Receiver) GenerateFeedbackSLD() (recvRate uint64, delay uint64, queueBuildup bool) {
 	recvRate = r.recvRate
 	delay = r.qDelay
 	queueBuildup = r.logWin.QueueBuildup()
