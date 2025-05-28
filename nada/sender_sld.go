@@ -59,7 +59,7 @@ func (r *SenderSLD) LostPacket(pn, tsReceived uint64) {
 // FeedbackReport calculates the new rate with the feedback from the receiver.
 // recvRate, delay, queueBuildup are from the receiver feedback.
 // rtt is the current rtt in micro seconds.
-func (s *SenderSLD) FeedbackReport(recvRate uint64, delay uint64, queueBuildup bool, rtt uint64) (newRate, xCurr uint64) { // TODO: remove xcurr from return
+func (s *SenderSLD) FeedbackReport(feedback FeedbackSLD, rtt uint64) (newRate, xCurr uint64) { // TODO: remove xcurr from return
 	s.mtx.Lock()
 	currTime := uint64(time.Now().UnixMicro())
 
@@ -72,7 +72,7 @@ func (s *SenderSLD) FeedbackReport(recvRate uint64, delay uint64, queueBuildup b
 	}
 
 	// update congestion values
-	updatedDelay := wrapQDelay(*s.config, delay, s.logWin)
+	updatedDelay := wrapQDelay(*s.config, feedback.Delay, s.logWin)
 
 	lostPackets := s.logWin.LostPackets()
 	markedpackets := s.logWin.MarkedPackets()
@@ -87,9 +87,9 @@ func (s *SenderSLD) FeedbackReport(recvRate uint64, delay uint64, queueBuildup b
 	xCurr = aggregateCng(*s.config, updatedDelay, s.markingRatio, s.lossRatio)
 
 	// calc new rate
-	if lostPackets == 0 && !queueBuildup {
+	if lostPackets == 0 && !feedback.QueueBuildup {
 		// RampUp
-		newRate = rampUpRate(*s.config, rtt, s.prevRate, recvRate)
+		newRate = rampUpRate(*s.config, rtt, s.prevRate, feedback.RecvRate)
 	} else {
 		newRate = gradualUpdateRate(*s.config, s.prevRate, xCurr, s.xPerv, delta)
 	}

@@ -90,28 +90,28 @@ func (r *Receiver) PacketArrived(
 
 // GenerateFeedbackRLD: On time to send a new feedback report (t_curr - t_last > DELTA)
 // Returns reciving rate, aggregated congestion signal and rampUpMode.
-func (r *Receiver) GenerateFeedbackRLD() (recvRate uint64, xCurr uint64, rampUpMode bool) {
-	recvRate = r.recvRate
+func (r *Receiver) GenerateFeedbackRLD() (feedback FeedbackRLD) {
+	feedback.RecvRate = r.recvRate
 
 	wrappedDelay := wrapQDelay(*r.config, r.qDelay, r.logWin)
 
 	// calculate aggregate congestion signal x_curr
-	xCurr = aggregateCng(*r.config, wrappedDelay, r.markingRatio, r.lossRatio)
+	feedback.XCurr = aggregateCng(*r.config, wrappedDelay, r.markingRatio, r.lossRatio)
 
 	// determine mode of rate adaptation for sender: rmode
 	// if no packet loss in logwin and no queue build up in current LOGWIN
 	if r.logWin.LostPackets() == 0 && !r.logWin.QueueBuildup() {
-		rampUpMode = true
+		feedback.RampUpMode = true
 	}
 
-	return
+	return feedback
 }
 
 // GenerateFeedbackSLD for loss detection at sender
-func (r *Receiver) GenerateFeedbackSLD() (recvRate uint64, delay uint64, queueBuildup bool) {
-	recvRate = r.recvRate
-	delay = r.qDelay
-	queueBuildup = r.logWin.QueueBuildup()
+func (r *Receiver) GenerateFeedbackSLD() (feedback FeedbackSLD) {
+	feedback.RecvRate = r.recvRate
+	feedback.Delay = r.qDelay
+	feedback.QueueBuildup = r.logWin.QueueBuildup()
 
-	return recvRate, delay, queueBuildup
+	return feedback
 }
