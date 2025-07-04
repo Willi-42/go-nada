@@ -1,53 +1,56 @@
 package nada
 
 const (
-	PRIO      float64 = 1.0
-	RMIN      uint64  = 150000  // bps
-	RMAX      uint64  = 1500000 // bps
-	XREF      uint64  = 10      // ms
-	KAPPA     float64 = 0.5
-	ETA       float64 = 2.0
-	TAU       uint64  = 500 // ms
-	DELTA     uint64  = 100 // ms
-	LOGWIN    uint64  = 500 // ms
-	QEPS      uint64  = 10  // ms
-	DFILT     uint64  = 120 // ms
-	GAMMA_MAX float64 = 0.5
-	QBOUND    uint64  = 50 // ms
-	MULTILOSS float64 = 7.0
-	QTH       uint64  = 50 // ms
-	LAMBDA    float64 = 0.5
-	PLRREF    float64 = 0.01
-	PMRREF    float64 = 0.01
-	DLOSS     uint64  = 10 // ms
-	DMARK     uint64  = 2  // ms
-	ALPHA     float64 = 0.1
+	PRIO               float64 = 1.0
+	RMIN               uint64  = 150000  // bps
+	RMAX               uint64  = 1500000 // bps
+	XREF               uint64  = 10      // ms
+	KAPPA              float64 = 0.5
+	ETA                float64 = 2.0
+	TAU                uint64  = 500 // ms
+	DELTA              uint64  = 100 // ms
+	LOGWIN             uint64  = 500 // ms
+	QEPS               uint64  = 10  // ms
+	DFILT              uint64  = 120 // ms
+	GAMMA_MAX          float64 = 0.1
+	QBOUND             uint64  = 50 // ms
+	MULTILOSS          float64 = 7.0
+	QTH                uint64  = 50 // ms
+	LAMBDA             float64 = 0.5
+	PLRREF             float64 = 0.01
+	PMRREF             float64 = 0.01
+	DLOSS              uint64  = 10 // ms
+	DMARK              uint64  = 2  // ms
+	ALPHA              float64 = 0.1
+	GRAD_UPDATE_FACTOR float64 = 0.02
 )
 
 type Config struct {
-	Priority      float64 // Weight of priority of the flow
-	MinRate       uint64  // minimum rate supported by encoder in bps
-	MaxRate       uint64  // maximum rate supported by encoder in bps
-	RefCongLevel  uint64  // Reference congestion level
-	Kappa         float64 // Scaling parameter for gradual rate update calculation
-	Eta           float64 // Scaling parameter for gradual rate update calculation
-	Tau           uint64  // Upper bound of RTT in gradual rate update calculation
-	FeedbackDelta uint64  // Target feedback interval
-	LogWin        uint64  // Observation window in time for calculating packet summary statistics at receiver
-	QEPS          uint64  // Threshold for determining queuing delay buildup at receiver
-	DFILT         uint64  // Bound on filtering delay
-	GAMMA_MAX     float64 // Upper bound on rate increase ratio for accelerated ramp up
-	QBOUND        uint64  // Upper bound on self-inflicted queuing delay during ramp up
-	MULTILOSS     float64 // Multiplier for self-scaling the expiration threshold of the last observed loss (loss_exp) based on measured average loss interval (loss_int)
-	QTH           uint64  // Delay threshold for invoking non-linear warping
-	LAMBDA        float64 // Scaling parameter in the exponent of non-linear warping
-	PLRREF        float64 // Reference packet loss ratio
-	PMRREF        float64 // Reference packet marking ratio
-	DLOSS         uint64  // Reference delay penalty for loss when packet loss ratio is at PLRREF
-	DMARK         uint64  // Reference delay penalty for ECN marking when packet marking is at PM
-	ALPHA         float64 // Smoothing factor in exponential smoothing of packet loss and marking ratios
+	Priority               float64 // Weight of priority of the flow
+	MinRate                uint64  // minimum rate supported by encoder in bps
+	MaxRate                uint64  // maximum rate supported by encoder in bps
+	RefCongLevel           uint64  // Reference congestion level
+	Kappa                  float64 // Scaling parameter for gradual rate update calculation
+	Eta                    float64 // Scaling parameter for gradual rate update calculation
+	Tau                    uint64  // Upper bound of RTT in gradual rate update calculation
+	FeedbackDelta          uint64  // Target feedback interval
+	LogWin                 uint64  // Observation window in time for calculating packet summary statistics at receiver
+	QEPS                   uint64  // Threshold for determining queuing delay buildup at receiver
+	DFILT                  uint64  // Bound on filtering delay
+	MaxRampUpFactor        float64 // GAMMA_MAX: Upper bound on rate increase ratio for accelerated ramp up
+	MaxGradualUpdateFactor float64 // Upper/Lower bound on rate increase/decrease ratio for gradual updates
+	QBOUND                 uint64  // Upper bound on self-inflicted queuing delay during ramp up
+	MULTILOSS              float64 // Multiplier for self-scaling the expiration threshold of the last observed loss (loss_exp) based on measured average loss interval (loss_int)
+	QTH                    uint64  // Delay threshold for invoking non-linear warping
+	LAMBDA                 float64 // Scaling parameter in the exponent of non-linear warping
+	PLRREF                 float64 // Reference packet loss ratio
+	PMRREF                 float64 // Reference packet marking ratio
+	DLOSS                  uint64  // Reference delay penalty for loss when packet loss ratio is at PLRREF
+	DMARK                  uint64  // Reference delay penalty for ECN marking when packet marking is at PM
+	ALPHA                  float64 // Smoothing factor in exponential smoothing of packet loss and marking ratios
 
 	DeactivateQDelayWrapping bool // do not apply wrapping of qdely
+	SmoothDelaySamples       bool // Smooth delay samples with exponential moving average
 }
 
 func populateConfig(c *Config) *Config {
@@ -65,7 +68,8 @@ func populateConfig(c *Config) *Config {
 	c.LogWin = setDefaultMs(c.LogWin, LOGWIN)
 	c.QEPS = setDefaultMs(c.QEPS, QEPS)
 	c.DFILT = setDefaultMs(c.DFILT, DFILT)
-	c.GAMMA_MAX = setDefaultFloat(c.GAMMA_MAX, GAMMA_MAX)
+	c.MaxRampUpFactor = setDefaultFloat(c.MaxRampUpFactor, GAMMA_MAX)
+	c.MaxGradualUpdateFactor = setDefaultFloat(c.MaxGradualUpdateFactor, GRAD_UPDATE_FACTOR)
 	c.QBOUND = setDefaultMs(c.QBOUND, QBOUND)
 	c.MULTILOSS = setDefaultFloat(c.MULTILOSS, MULTILOSS)
 	c.QTH = setDefaultMs(c.QTH, QTH)
@@ -76,7 +80,7 @@ func populateConfig(c *Config) *Config {
 	c.DMARK = setDefaultMs(c.DMARK, DMARK)
 	c.ALPHA = setDefaultFloat(c.ALPHA, ALPHA)
 
-	// DeactivateQDelayWrapping is false if not given == default
+	// DeactivateQDelayWrapping & SmoothDelaySamples are false if not given == default
 
 	return c
 }

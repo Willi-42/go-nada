@@ -62,9 +62,14 @@ func (r *Receiver) PacketArrived(
 	currDelay := oneWayDelay - r.baseDelay
 
 	// filter qdelay with min filter
-	// compare: https://www.rfc-editor.org/rfc/rfc8698.html#name-method-for-delay-loss-and-m
 	r.delayWin.AddSample(currDelay)
-	r.qDelay = r.delayWin.MinDelay()
+	delayWithMinfilter := r.delayWin.MinDelay()
+
+	// exponential moving average
+	if r.config.SmoothDelaySamples {
+		beta := 0.9
+		r.qDelay = uint64((1-beta)*float64(delayWithMinfilter) + beta*float64(r.qDelay))
+	}
 
 	// check for queue build-up
 	queueBuildup := false

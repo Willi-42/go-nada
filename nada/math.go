@@ -1,6 +1,7 @@
 package nada
 
 import (
+	"log"
 	"math"
 
 	"github.com/Willi-42/go-nada/nada/windows"
@@ -17,9 +18,9 @@ func aggregateCng(conf Config, d_tilde uint64, p_mark, p_loss float64) uint64 {
 	dmark := float64(conf.DMARK) * math.Pow(p_mark/conf.PMRREF, 2)
 	dloss := float64(conf.DLOSS) * math.Pow(p_loss/conf.PLRREF, 2)
 
-	// max penalty caused by losses
-	dloss = min(dloss, 500000)
-	// TODO: max penalty for dmark
+	// max penalty caused by losses/marks
+	dloss = min(dloss, 100000)
+	dmark = min(dmark, 100000)
 
 	return d_tilde + uint64(dmark+dloss)
 }
@@ -64,7 +65,7 @@ func rampUpRate(
 ) uint64 {
 
 	bound := float64(config.QBOUND) / float64(rtt+config.FeedbackDelta+config.DFILT)
-	gamma := min(config.GAMMA_MAX, bound)
+	gamma := min(config.MaxRampUpFactor, bound)
 
 	incrRecvRate := (1 + gamma) * float64(recvRate)
 
@@ -88,17 +89,25 @@ func gradualUpdateRate(
 	xOffset := float64(xCurr) - xIdeal
 
 	// current congestion signal change
-	xDiff := int64(xCurr) - int64(xPrev)
+	xDiff := float64(xCurr) - float64(xPrev)
 
 	term1 := conf.Kappa * (float64(feedbackDelta) / float64(conf.Tau))
 	term1 *= (xOffset / float64(conf.Tau)) * float64(prevRefRate)
 
-	term2 := conf.Kappa * conf.Eta * (float64(xDiff) / float64(conf.Tau)) * float64(prevRefRate)
+	term2 := conf.Kappa * conf.Eta * (xDiff / float64(conf.Tau)) * float64(prevRefRate)
 
-	res := int64(prevRefRate) - int64(term1) - int64(term2)
+	totoalChange := -term1 - term2
 
-	// TODO: why can there be a negative result
+	// clip rate change
+	maxTotalChange := conf.MaxGradualUpdateFactor * float64(prevRefRate)
+
+	updatedChange := max(-maxTotalChange, totoalChange)
+	updatedChange = min(maxTotalChange, updatedChange)
+
+	res := float64(prevRefRate) + updatedChange
+
 	if res < 0 {
+		log.Println("nada grad update: negative results")
 		res = 0
 	}
 
