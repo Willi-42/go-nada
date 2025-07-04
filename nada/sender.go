@@ -16,7 +16,7 @@ func NewSender(config Config) Sender {
 	configPopulated := populateConfig(&config)
 
 	return Sender{
-		prevRate: configPopulated.MinRate,
+		prevRate: configPopulated.StartRate,
 		config:   configPopulated,
 	}
 }

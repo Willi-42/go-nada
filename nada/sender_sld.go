@@ -26,7 +26,7 @@ func NewSenderSLD(config Config) SenderSLD {
 	logWinSize := configPopulated.LogWin
 
 	return SenderSLD{
-		prevRate: configPopulated.MinRate,
+		prevRate: configPopulated.StartRate,
 		config:   configPopulated,
 		logWin:   windows.NewLogWindow(logWinSize, 8), // TODO: add to config
 	}

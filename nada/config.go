@@ -29,6 +29,7 @@ type Config struct {
 	Priority               float64 // Weight of priority of the flow
 	MinRate                uint64  // minimum rate supported by encoder in bps
 	MaxRate                uint64  // maximum rate supported by encoder in bps
+	StartRate              uint64  // at which rate NADA should start (default: MinRate)
 	RefCongLevel           uint64  // Reference congestion level
 	Kappa                  float64 // Scaling parameter for gradual rate update calculation
 	Eta                    float64 // Scaling parameter for gradual rate update calculation
@@ -60,6 +61,7 @@ func populateConfig(c *Config) *Config {
 
 	c.MinRate = setDefaultInt(c.MinRate, RMIN)
 	c.MaxRate = setDefaultInt(c.MaxRate, RMAX)
+	c.StartRate = setDefaultInt(c.StartRate, RMIN)
 	c.RefCongLevel = setDefaultMs(c.RefCongLevel, XREF)
 	c.Kappa = setDefaultFloat(c.Kappa, KAPPA)
 	c.Eta = setDefaultFloat(c.Eta, ETA)
