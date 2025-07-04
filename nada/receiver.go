@@ -33,8 +33,8 @@ func NewReceiver(config Config) Receiver {
 }
 
 // PacketArrivedWithoutTs can be used to register the
-// arrival of packets without a ts, e.g. ack only packets.
-// Have to be registered, otherwise considered lost.
+// arrival of packets without a ts, e.g. quic probe packets.
+// Have to be registered, otherwise considered lost in RLD mode.
 func (r *Receiver) PacketArrivedWithoutTs(packetNumber, recvTs uint64) {
 	r.logWin.AddEmptyPacket(packetNumber, recvTs)
 }

@@ -1,9 +1,5 @@
 package windows
 
-import (
-	"log"
-)
-
 type packetEvent struct {
 	lost         bool
 	marked       bool
@@ -166,8 +162,6 @@ func (q *LogWindow) checkForGaps(pn, tsReceived uint64) {
 
 	// packet gap
 	if gapSize != 0 {
-		log.Printf("got gap: %v - %v", q.lastPn, pn)
-
 		q.addLossEvent(tsReceived, gapSize)
 	}
 }

@@ -1,7 +1,6 @@
 package nada
 
 import (
-	"log"
 	"math"
 
 	"github.com/Willi-42/go-nada/nada/windows"
@@ -107,7 +106,6 @@ func gradualUpdateRate(
 	res := float64(prevRefRate) + updatedChange
 
 	if res < 0 {
-		log.Println("nada grad update: negative results")
 		res = 0
 	}
 
