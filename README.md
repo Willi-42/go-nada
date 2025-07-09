@@ -7,9 +7,11 @@ NADA is a real-time congestion control algorithm.
 
 NADA RFC: [RFC 8698](https://www.rfc-editor.org/rfc/rfc8698)
 
-## How to
+## Versions
+* **Split NADA**: NADA runs at sender and at the reciever.
+* **Sender-only NADA**: NADA only runs at the sender.
 
-### Default / Receiver Loss Detection
+### **Split** with Receiver Loss Detection
 Loss are detected at the receiver side.
 
 #### Receiver Side
@@ -21,7 +23,7 @@ Loss are detected at the receiver side.
 * Register the arrived feedback with `FeedbackReport`.
   `FeedbackReport` returns the new media rate.
 
-### Sender Loss Detection
+### **Split** with Sender Loss Detection
 Losses are detected at the sender side.
 
 #### Receiver Side
@@ -33,3 +35,8 @@ Losses are detected at the sender side.
 * Register successfully delivered packets with `PacketDelivered`.
 * Register the arrived feedback with `FeedbackReport`.
   `FeedbackReport` returns the new media rate.
+
+
+### **Sender-only**
+* Requires feedback at the configured interval.
+* Regsitered feedback with `OnAck`. Returns the new target rate.

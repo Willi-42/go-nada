@@ -1,6 +1,9 @@
 package nada
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 type FeedbackRLD struct {
 	RecvRate   uint64
@@ -20,4 +23,13 @@ func (f FeedbackRLD) String() string {
 
 func (f FeedbackSLD) String() string {
 	return fmt.Sprintf("%v;%v;%v", f.RecvRate, f.Delay, f.QueueBuildup)
+}
+
+// Feedback for sender only NADA
+type FeedbackSO struct {
+	PacketNumber  uint64
+	sentTs        time.Time
+	RecvTs        time.Time
+	PacketSizeBit uint64
+	Marked        bool
 }
