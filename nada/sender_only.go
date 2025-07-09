@@ -18,10 +18,10 @@ func NewSenderOnly(config Config) SenderOnly {
 	}
 }
 
-func (s *SenderOnly) OnAck(rtt time.Duration, feedback []FeedbackSO) (newRate uint64) {
+func (s *SenderOnly) OnAcks(rtt time.Duration, feedback []Acknowledgment) (newRate uint64) {
 	// register packets
 	for _, event := range feedback {
-		s.receiver.PacketArrived(event.PacketNumber, uint64(event.sentTs.UnixMicro()), uint64(event.RecvTs.UnixMicro()), event.PacketSizeBit, event.Marked)
+		s.receiver.PacketArrived(event.SeqNr, uint64(event.Departure.UnixMicro()), uint64(event.Arrival.UnixMicro()), event.SizeBit, event.Marked)
 	}
 
 	// calc new rate

@@ -25,11 +25,12 @@ func (f FeedbackSLD) String() string {
 	return fmt.Sprintf("%v;%v;%v", f.RecvRate, f.Delay, f.QueueBuildup)
 }
 
-// Feedback for sender only NADA
-type FeedbackSO struct {
-	PacketNumber  uint64
-	sentTs        time.Time
-	RecvTs        time.Time
-	PacketSizeBit uint64
-	Marked        bool
+// Acknowledgment contains arrival information about one packet.
+// Sender-only NADA requires these Acknowledgments.
+type Acknowledgment struct {
+	SeqNr     uint64
+	Departure time.Time
+	Arrival   time.Time
+	SizeBit   uint64
+	Marked    bool
 }
