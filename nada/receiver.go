@@ -2,6 +2,7 @@ package nada
 
 import (
 	"math"
+	"time"
 
 	"github.com/Willi-42/go-nada/nada/windows"
 )
@@ -35,8 +36,8 @@ func NewReceiver(config Config) Receiver {
 // PacketArrivedWithoutTs can be used to register the
 // arrival of packets without a ts, e.g. quic probe packets.
 // Have to be registered, otherwise considered lost in RLD mode.
-func (r *Receiver) PacketArrivedWithoutTs(packetNumber, recvTs uint64) {
-	r.logWin.AddEmptyPacket(packetNumber, recvTs)
+func (r *Receiver) PacketArrivedWithoutTs(packetNumber uint64, recvTs time.Time) {
+	r.logWin.AddEmptyPacket(packetNumber, uint64(recvTs.UnixMicro()))
 }
 
 // PacketArrived registers a new arrived packet.
@@ -45,11 +46,14 @@ func (r *Receiver) PacketArrivedWithoutTs(packetNumber, recvTs uint64) {
 // marked: packet got ECN
 func (r *Receiver) PacketArrived(
 	packetNumber uint64,
-	sentTs uint64,
-	recvTs uint64,
-	packetSize uint64,
+	departure time.Time,
+	arrival time.Time,
+	packetSizeBit uint64,
 	marked bool,
 ) {
+	sentTs := uint64(departure.UnixMicro())
+	recvTs := uint64(arrival.UnixMicro())
+
 	// current one-way delay (d_fwd)
 	oneWayDelay := recvTs - sentTs
 
@@ -78,7 +82,7 @@ func (r *Receiver) PacketArrived(
 	}
 
 	// update logwin
-	r.logWin.NewMediaPacketRecieved(packetNumber, recvTs, packetSize, marked, queueBuildup)
+	r.logWin.NewMediaPacketRecieved(packetNumber, recvTs, packetSizeBit, marked, queueBuildup)
 	r.logWin.UpdateStats(recvTs)
 
 	// calculate loss/marking ratio

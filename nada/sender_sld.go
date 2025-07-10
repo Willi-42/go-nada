@@ -58,8 +58,8 @@ func (r *SenderSLD) LostPacket(pn, tsReceived uint64) {
 
 // FeedbackReport calculates the new rate with the feedback from the receiver.
 // recvRate, delay, queueBuildup are from the receiver feedback.
-// rtt is the current rtt in micro seconds.
-func (s *SenderSLD) FeedbackReport(feedback FeedbackSLD, rtt uint64) (newRate uint64) {
+// rtt is the current rtt.
+func (s *SenderSLD) FeedbackReport(feedback FeedbackSLD, rtt time.Duration) (newRate uint64) {
 	s.mtx.Lock()
 	currTime := uint64(time.Now().UnixMicro())
 
@@ -89,7 +89,7 @@ func (s *SenderSLD) FeedbackReport(feedback FeedbackSLD, rtt uint64) (newRate ui
 	// calc new rate
 	if lostPackets == 0 && !feedback.QueueBuildup {
 		// RampUp
-		newRate = rampUpRate(*s.config, rtt, s.prevRate, feedback.RecvRate)
+		newRate = rampUpRate(*s.config, uint64(rtt.Microseconds()), s.prevRate, feedback.RecvRate)
 	} else {
 		newRate = gradualUpdateRate(*s.config, s.prevRate, xCurr, s.xPerv, delta)
 	}

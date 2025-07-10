@@ -24,7 +24,7 @@ func NewSender(config Config) Sender {
 // FeedbackReport calculates the new rate with the feedback from the receiver.
 // xCurr, recvRate, rampUpMode are from the receiver feedback.
 // rtt is the current rtt in micro seconds.
-func (s *Sender) FeedbackReport(feedback FeedbackRLD, rtt uint64) (newRate uint64) {
+func (s *Sender) FeedbackReport(feedback FeedbackRLD, rtt time.Duration) (newRate uint64) {
 	currTime := uint64(time.Now().UnixMicro())
 
 	// default feedback interval
@@ -36,7 +36,7 @@ func (s *Sender) FeedbackReport(feedback FeedbackRLD, rtt uint64) (newRate uint6
 	}
 
 	if feedback.RampUpMode {
-		newRate = rampUpRate(*s.config, rtt, s.prevRate, feedback.RecvRate)
+		newRate = rampUpRate(*s.config, uint64(rtt.Microseconds()), s.prevRate, feedback.RecvRate)
 	} else {
 		newRate = gradualUpdateRate(*s.config, s.prevRate, feedback.XCurr, s.xPerv, delta)
 	}
