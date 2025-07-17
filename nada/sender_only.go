@@ -1,6 +1,8 @@
 package nada
 
-import "time"
+import (
+	"time"
+)
 
 type SenderOnly struct {
 	sender   *Sender
@@ -8,9 +10,8 @@ type SenderOnly struct {
 }
 
 func NewSenderOnly(config Config) SenderOnly {
-	configPopulated := populateConfig(&config)
-	sender := NewSender(*configPopulated)
-	receiver := NewReceiver(*configPopulated)
+	sender := NewSender(config)
+	receiver := NewReceiver(config)
 
 	return SenderOnly{
 		sender:   &sender,

@@ -23,15 +23,18 @@ type LogWindow struct {
 	lostPackets     uint64
 	receivedBits    uint64
 	queueBuildupCnt uint64 // number of times a queue buildup was detected
+
+	gotFirstPacket bool // to register the sequence number of our first packet as the starting point
 }
 
 // NewLogWindow creates a new logging window queue.
 // Size has to be in micro seconds!
 func NewLogWindow(sizeInMicroS uint64, lossIntervalSize int) *LogWindow {
 	return &LogWindow{
-		elements:   make([]packetEvent, 0),
-		windowSize: sizeInMicroS,
-		lossInts:   newLossIntervall(lossIntervalSize),
+		elements:       make([]packetEvent, 0),
+		windowSize:     sizeInMicroS,
+		lossInts:       newLossIntervall(lossIntervalSize),
+		gotFirstPacket: false,
 	}
 }
 
@@ -65,6 +68,17 @@ func (q *LogWindow) AvgLossInterval() float64 {
 }
 
 func (q *LogWindow) AddEmptyPacket(pn, tsReceived uint64) {
+	if !q.gotFirstPacket {
+		q.lastPn = pn
+		q.gotFirstPacket = true
+
+	} else if pn <= q.lastPn {
+		// packet arravied out of order
+		// TODO: duplicated packet
+		// TODO: should handle queue build up
+		return
+	}
+
 	q.checkForGaps(pn, tsReceived)
 	q.lastPn = pn
 }
@@ -83,7 +97,11 @@ func (q *LogWindow) NewMediaPacketRecieved(
 	marked bool,
 	queueBuildup bool,
 ) {
-	if pn <= q.lastPn && pn != 0 {
+	if !q.gotFirstPacket {
+		q.lastPn = pn
+		q.gotFirstPacket = true
+
+	} else if pn <= q.lastPn {
 		// packet arravied out of order
 		// TODO: duplicated packet
 		// TODO: should handle queue build up
@@ -152,8 +170,8 @@ func (q *LogWindow) UpdateStats(currentTime uint64) {
 }
 
 func (q *LogWindow) checkForGaps(pn, tsReceived uint64) {
-	// skip gap calc for first packet
-	if pn == 0 {
+	// skip gap calc for first packet and duplicated packets
+	if pn == q.lastPn {
 		return
 	}
 
