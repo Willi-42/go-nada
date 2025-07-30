@@ -67,12 +67,14 @@ func (r *Receiver) PacketArrived(
 
 	// filter qdelay with min filter
 	r.delayWin.AddSample(currDelay)
-	delayWithMinfilter := r.delayWin.MinDelay()
+	newDelay := r.delayWin.MinDelay()
 
 	// exponential moving average
 	if r.config.SmoothDelaySamples {
 		beta := 0.9
-		r.qDelay = uint64((1-beta)*float64(delayWithMinfilter) + beta*float64(r.qDelay))
+		r.qDelay = uint64((1-beta)*float64(newDelay) + beta*float64(r.qDelay))
+	} else {
+		r.qDelay = newDelay
 	}
 
 	// check for queue build-up

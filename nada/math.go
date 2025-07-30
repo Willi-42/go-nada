@@ -100,8 +100,8 @@ func gradualUpdateRate(
 	// clip rate change
 	maxTotalChange := conf.MaxGradualUpdateFactor * float64(prevRefRate)
 
-	updatedChange := max(-maxTotalChange, totoalChange)
-	updatedChange = min(maxTotalChange, updatedChange)
+	// updatedChange := max(-maxTotalChange, totoalChange)
+	updatedChange := min(maxTotalChange, totoalChange)
 
 	res := float64(prevRefRate) + updatedChange
 
