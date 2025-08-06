@@ -37,7 +37,7 @@ type Config struct {
 	FeedbackDelta          uint64  // Target feedback interval
 	LogWin                 uint64  // Observation window in time for calculating packet summary statistics at receiver
 	QEPS                   uint64  // Threshold for determining queuing delay buildup at receiver
-	DFILT                  uint64  // Bound on filtering delay
+	DFILT                  uint64  // Bound on filtering delay for RampUp Mode
 	MaxRampUpFactor        float64 // GAMMA_MAX: Upper bound on rate increase ratio for accelerated ramp up
 	MaxGradualUpdateFactor float64 // Upper/Lower bound on rate increase/decrease ratio for gradual updates
 	QBOUND                 uint64  // Upper bound on self-inflicted queuing delay during ramp up

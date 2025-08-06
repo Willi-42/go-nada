@@ -40,3 +40,13 @@ Losses are detected at the sender side.
 ### **Sender-only**
 * Requires feedback at the configured interval.
 * Regsitered feedback with `OnAck`. Returns the new target rate.
+
+## Tunning Parameters
+
+Reactiveness of Gradual Update Mode:
+* **KAPPA**: General reactivness
+ * KAPPA < 0.5: less reactive
+ * KAPPA > 0.5: more reactive
+* **ETA**: Reactiveness towards current congestion change
+ * ETA < 2 -> less reactive
+ * ETA > 2 -> more reactive

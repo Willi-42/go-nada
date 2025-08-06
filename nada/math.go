@@ -24,8 +24,8 @@ func aggregateCng(conf Config, d_tilde uint64, p_mark, p_loss float64) uint64 {
 	return d_tilde + uint64(dmark+dloss)
 }
 
-// nonLinWrapingQDelay calculates the non linear wrapping (d_tilde) of the queueing delay (d_queue)
-func nonLinWrapingQDelay(conf Config, qDelay uint64) uint64 {
+// nonLinWrappingQDelay calculates the non linear wrapping (d_tilde) of the queueing delay (d_queue)
+func nonLinWrappingQDelay(conf Config, qDelay uint64) uint64 {
 	exponent := -conf.LAMBDA * (float64(qDelay-conf.QTH) / float64(conf.QTH))
 	return uint64(float64(conf.QTH) * math.Exp(exponent))
 }
@@ -41,15 +41,15 @@ func wrapQDelay(conf Config, qDelay uint64, logWin *windows.LogWindow) uint64 {
 	// Threshold value for setting the last observed packet loss to expiration.
 	// Measured in terms of packet counts.
 	avgLossInt := logWin.AvgLossInterval()
-	lossExp := uint64(conf.MULTILOSS * avgLossInt)
+	lossExpirationWindow := uint64(conf.MULTILOSS * avgLossInt)
 
 	// calculate non-linear warping of delay (d_tilde)
-	// if the last observed packet loss is within the expiration window of loss_exp
+	// if the last observed packet loss is within the expiration window of lossExpirationWindow
 
-	packtesSinceLoss, gotLoss := logWin.PacketsSinceLoss()
+	packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
 
-	if gotLoss && packtesSinceLoss <= lossExp && qDelay >= conf.QTH {
-		updatedDelay = nonLinWrapingQDelay(conf, qDelay)
+	if gotLoss && packetsSinceLoss <= lossExpirationWindow && qDelay >= conf.QTH {
+		updatedDelay = nonLinWrappingQDelay(conf, qDelay)
 	}
 
 	return updatedDelay
@@ -64,9 +64,9 @@ func rampUpRate(
 ) uint64 {
 
 	bound := float64(config.QBOUND) / float64(rtt+config.FeedbackDelta+config.DFILT)
-	gamma := min(config.MaxRampUpFactor, bound)
+	rampUpFactor := min(config.MaxRampUpFactor, bound)
 
-	incrRecvRate := (1 + gamma) * float64(recvRate)
+	incrRecvRate := (1 + rampUpFactor) * float64(recvRate)
 
 	return max(prevRefRate, uint64(incrRecvRate))
 }
@@ -90,18 +90,18 @@ func gradualUpdateRate(
 	// current congestion signal change
 	xDiff := float64(xCurr) - float64(xPrev)
 
-	term1 := conf.Kappa * (float64(feedbackDelta) / float64(conf.Tau))
-	term1 *= (xOffset / float64(conf.Tau)) * float64(prevRefRate)
+	updateIdeal := conf.Kappa * (float64(feedbackDelta) / float64(conf.Tau))
+	updateIdeal *= (xOffset / float64(conf.Tau)) * float64(prevRefRate)
 
-	term2 := conf.Kappa * conf.Eta * (xDiff / float64(conf.Tau)) * float64(prevRefRate)
+	updateCurrent := conf.Kappa * conf.Eta * (xDiff / float64(conf.Tau)) * float64(prevRefRate)
 
-	totoalChange := -term1 - term2
+	totalChange := -updateIdeal - updateCurrent
 
 	// clip rate change
 	maxTotalChange := conf.MaxGradualUpdateFactor * float64(prevRefRate)
 
 	// updatedChange := max(-maxTotalChange, totoalChange)
-	updatedChange := min(maxTotalChange, totoalChange)
+	updatedChange := min(maxTotalChange, totalChange)
 
 	res := float64(prevRefRate) + updatedChange
 

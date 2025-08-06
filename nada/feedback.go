@@ -33,4 +33,5 @@ type Acknowledgment struct {
 	Arrival   time.Time
 	SizeBit   uint64
 	Marked    bool
+	Arrived   bool
 }
