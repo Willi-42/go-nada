@@ -7,6 +7,7 @@ type packetEvent struct {
 	size         uint64
 	tsReceived   uint64
 	lossRange    uint64 // for lost packets in a range
+	pn           uint64
 }
 
 // LogWindow is a logging window
@@ -86,7 +87,7 @@ func (q *LogWindow) AddEmptyPacket(pn, tsReceived uint64) {
 // AddLostPacket to register a loss if detected by app.
 // For loss detection at sender side
 func (q *LogWindow) AddLostPacket(pn, tsReceived uint64) {
-	q.addLossEvent(tsReceived, 1)
+	q.addLossEvent(tsReceived, 1, pn, true)
 	q.lastPn = pn
 }
 
@@ -120,7 +121,7 @@ func (q *LogWindow) NewMediaPacketRecievedNoGapCheck(
 	marked bool,
 	queueBuildup bool,
 ) {
-	q.addPacketEvent(tsReceived, size, marked, queueBuildup)
+	q.addPacketEvent(tsReceived, size, marked, queueBuildup, pn)
 	q.receivedBits += size
 	q.arrivedPackets++
 
@@ -180,28 +181,50 @@ func (q *LogWindow) checkForGaps(pn, tsReceived uint64) {
 
 	// packet gap
 	if gapSize != 0 {
-		q.addLossEvent(tsReceived, gapSize)
+		q.addLossEvent(tsReceived, gapSize, pn, false)
 	}
 }
 
-func (q *LogWindow) addLossEvent(ts, gapSize uint64) {
-	q.elements = append(q.elements, packetEvent{
+func (q *LogWindow) addLossEvent(ts, gapSize, pn uint64, sortedInsert bool) {
+	lossEvent := packetEvent{
 		lost:       true,
 		tsReceived: ts,
 		lossRange:  gapSize,
 		marked:     false,
-	})
+		pn:         pn,
+	}
+
+	if !sortedInsert {
+		q.elements = append(q.elements, lossEvent)
+	} else {
+		// sored instert based on tsReceived
+		inserted := false
+		for i, event := range q.elements {
+			if event.tsReceived >= lossEvent.tsReceived {
+				// Insert before event at index i
+				q.elements = append(q.elements[:i], append([]packetEvent{lossEvent}, q.elements[i:]...)...)
+				inserted = true
+				break
+			}
+		}
+		if !inserted {
+			// If not inserted, append at the end
+			q.elements = append(q.elements, lossEvent)
+		}
+	}
+
 	q.lostPackets += gapSize
 	q.lossInts.addLoss(gapSize)
 }
 
-func (q *LogWindow) addPacketEvent(tsReceived uint64, size uint64, marked bool, queueBuildup bool) {
+func (q *LogWindow) addPacketEvent(tsReceived uint64, size uint64, marked bool, queueBuildup bool, pn uint64) {
 	q.elements = append(q.elements, packetEvent{
 		lost:         false,
 		marked:       marked,
 		size:         size,
 		tsReceived:   tsReceived,
 		queueBuildup: queueBuildup,
+		pn:           pn,
 	})
 
 	q.lossInts.addPacket()

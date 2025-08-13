@@ -8,7 +8,7 @@ import (
 )
 
 var _ = Describe("LogWin", func() {
-	Context("test", func() {
+	Context("rld test", func() {
 		It("1 packets no update", func() {
 			logWin := NewLogWindow(10, 2)
 			logWin.NewMediaPacketRecieved(0, 0, 12, false, false)
@@ -404,7 +404,60 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.receivedBits).To(BeZero())
 			Expect(logWin.queueBuildupCnt).To(BeZero())
 		})
+	})
+	Context("sld test", func() {
+		It("Losses sorted insert simple", func() {
+			logWin := NewLogWindow(10, 2)
+			Expect(logWin.windowSize).To(Equal(uint64(10)))
 
+			logWin.NewMediaPacketRecievedNoGapCheck(201, 100, 12, false, false)
+			logWin.NewMediaPacketRecievedNoGapCheck(202, 150, 8, true, false)
+
+			// sorted insert based on tsReceived
+			logWin.AddLostPacket(203, 125)
+
+			Expect(logWin.elements[0].pn).To(Equal(201))
+			Expect(logWin.elements[1].pn).To(Equal(203))
+			Expect(logWin.elements[2].pn).To(Equal(202))
+			Expect(len(logWin.elements)).To(Equal(3))
+		})
+
+		It("Losses sorted insert complex", func() {
+			logWin := NewLogWindow(10, 2)
+			Expect(logWin.windowSize).To(Equal(uint64(10)))
+
+			logWin.NewMediaPacketRecievedNoGapCheck(201, 100, 12, false, false)
+			for _, e := range logWin.elements {
+				print(e.pn, " ")
+			}
+			println()
+
+			logWin.NewMediaPacketRecievedNoGapCheck(202, 101, 8, true, false)
+			for _, e := range logWin.elements {
+				print(e.pn, " ")
+			}
+			println()
+			logWin.NewMediaPacketRecievedNoGapCheck(204, 105, 20, false, false)
+
+			for _, e := range logWin.elements {
+				print(e.pn, " ")
+			}
+			println()
+
+			// sorted insert based on tsReceived
+			logWin.AddLostPacket(210, 102)
+			logWin.AddLostPacket(203, 103)
+
+			for _, e := range logWin.elements {
+				print(e.pn, " ")
+			}
+
+			Expect(logWin.elements[0].pn).To(Equal(201))
+			Expect(logWin.elements[1].pn).To(Equal(202))
+			Expect(logWin.elements[2].pn).To(Equal(210))
+			Expect(logWin.elements[3].pn).To(Equal(203))
+			Expect(logWin.elements[4].pn).To(Equal(204))
+		})
 	})
 })
 
