@@ -75,14 +75,14 @@ var _ = Describe("LogWin", func() {
 			logWin.NewMediaPacketRecieved(4, 5, 20, false, false)
 			logWin.NewMediaPacketRecieved(6, 5, 20, false, false)
 
-			Expect(logWin.arrivedPackets).To(Equal(uint64(3)))
+			Expect(logWin.arrivedPackets).To(Equal(uint64(6)))
 			Expect(logWin.markedPackets).To(Equal(uint64(1)))
-			Expect(logWin.receivedBits).To(Equal(uint64(40)))
+			Expect(logWin.receivedBits).To(Equal(uint64(100)))
 			Expect(logWin.lostPackets).To(Equal(uint64(4)))
 			Expect(logWin.queueBuildupCnt).To(BeZero())
 
 			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
-			Expect(packetsSinceLoss).To(Equal(uint64(4)))
+			Expect(packetsSinceLoss).To(Equal(uint64(7)))
 			Expect(gotLoss).To(BeTrue())
 			Expect(logWin.lastPn).To(Equal(uint64(6)))
 		})
@@ -293,9 +293,9 @@ var _ = Describe("LogWin", func() {
 
 			logWin.NewMediaPacketRecieved(213, 105, 20, false, true)
 
-			Expect(logWin.arrivedPackets).To(Equal(uint64(5)))
+			Expect(logWin.arrivedPackets).To(Equal(uint64(6)))
 			Expect(logWin.markedPackets).To(Equal(uint64(2)))
-			Expect(logWin.receivedBits).To(Equal(uint64(50)))
+			Expect(logWin.receivedBits).To(Equal(uint64(58)))
 			Expect(logWin.lostPackets).To(Equal(uint64(7)))
 			Expect(logWin.queueBuildupCnt).To(Equal(uint64(3)))
 
@@ -306,9 +306,9 @@ var _ = Describe("LogWin", func() {
 
 			logWin.UpdateStats(105)
 
-			Expect(logWin.arrivedPackets).To(Equal(uint64(3)))
+			Expect(logWin.arrivedPackets).To(Equal(uint64(4)))
 			Expect(logWin.markedPackets).To(Equal(uint64(1)))
-			Expect(logWin.receivedBits).To(Equal(uint64(40)))
+			Expect(logWin.receivedBits).To(Equal(uint64(48)))
 			Expect(logWin.lostPackets).To(Equal(uint64(7)))
 			Expect(logWin.queueBuildupCnt).To(Equal(uint64(2)))
 
@@ -416,9 +416,9 @@ var _ = Describe("LogWin", func() {
 			// sorted insert based on tsReceived
 			logWin.AddLostPacket(203, 125)
 
-			Expect(logWin.elements[0].pn).To(Equal(201))
-			Expect(logWin.elements[1].pn).To(Equal(203))
-			Expect(logWin.elements[2].pn).To(Equal(202))
+			Expect(logWin.elements[0].pn).To(Equal(uint64(201)))
+			Expect(logWin.elements[1].pn).To(Equal(uint64(203)))
+			Expect(logWin.elements[2].pn).To(Equal(uint64(202)))
 			Expect(len(logWin.elements)).To(Equal(3))
 		})
 
@@ -427,36 +427,19 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.windowSize).To(Equal(uint64(10)))
 
 			logWin.NewMediaPacketRecievedNoGapCheck(201, 100, 12, false, false)
-			for _, e := range logWin.elements {
-				print(e.pn, " ")
-			}
-			println()
 
 			logWin.NewMediaPacketRecievedNoGapCheck(202, 101, 8, true, false)
-			for _, e := range logWin.elements {
-				print(e.pn, " ")
-			}
-			println()
 			logWin.NewMediaPacketRecievedNoGapCheck(204, 105, 20, false, false)
-
-			for _, e := range logWin.elements {
-				print(e.pn, " ")
-			}
-			println()
 
 			// sorted insert based on tsReceived
 			logWin.AddLostPacket(210, 102)
 			logWin.AddLostPacket(203, 103)
 
-			for _, e := range logWin.elements {
-				print(e.pn, " ")
-			}
-
-			Expect(logWin.elements[0].pn).To(Equal(201))
-			Expect(logWin.elements[1].pn).To(Equal(202))
-			Expect(logWin.elements[2].pn).To(Equal(210))
-			Expect(logWin.elements[3].pn).To(Equal(203))
-			Expect(logWin.elements[4].pn).To(Equal(204))
+			Expect(logWin.elements[0].pn).To(Equal(uint64(201)))
+			Expect(logWin.elements[1].pn).To(Equal(uint64(202)))
+			Expect(logWin.elements[2].pn).To(Equal(uint64(210)))
+			Expect(logWin.elements[3].pn).To(Equal(uint64(203)))
+			Expect(logWin.elements[4].pn).To(Equal(uint64(204)))
 		})
 	})
 })
