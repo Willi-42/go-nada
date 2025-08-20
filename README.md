@@ -45,8 +45,8 @@ Losses are detected at the sender side.
 
 Reactiveness of Gradual Update Mode:
 * **KAPPA**: General reactivness
- * KAPPA < 0.5: less reactive
- * KAPPA > 0.5: more reactive
+  * KAPPA < 0.5: less reactive
+  * KAPPA > 0.5: more reactive
 * **ETA**: Reactiveness towards current congestion change
- * ETA < 2 -> less reactive
- * ETA > 2 -> more reactive
+  * ETA < 2 -> less reactive
+  * ETA > 2 -> more reactive

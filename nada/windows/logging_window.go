@@ -98,11 +98,12 @@ func (q *LogWindow) NewMediaPacketRecieved(
 		q.lastPn = pn
 		q.gotFirstPacket = true
 
-	} else if pn > q.lastPn {
-		// only check gap if packet arrived in order
-		q.checkForGaps(pn, tsReceived)
+	} else if pn <= q.lastPn {
+		// do not register packets that arrived out of order
+		return
 	}
 
+	q.checkForGaps(pn, tsReceived)
 	q.NewMediaPacketRecievedNoGapCheck(pn, tsReceived, size, marked, queueBuildup)
 }
 
@@ -113,7 +114,12 @@ func (q *LogWindow) NewMediaPacketRecievedNoGapCheck(
 	marked bool,
 	queueBuildup bool,
 ) {
-	q.addPacketEvent(tsReceived, size, marked, queueBuildup, pn)
+	ok := q.addPacketEvent(tsReceived, size, marked, queueBuildup, pn)
+	if !ok {
+		// packet duplicated; ignore
+		return
+	}
+
 	q.receivedBits += size
 	q.arrivedPackets++
 
@@ -178,31 +184,39 @@ func (q *LogWindow) checkForGaps(pn, tsReceived uint64) {
 
 	// packet gap
 	if gapSize != 0 {
-		q.addLossEvent(tsReceived, gapSize, pn, false)
+		pnBeforeLoss := uint64(0)
+		if pn > 0 {
+			pnBeforeLoss = pn - 1
+		}
+		q.addLossEvent(tsReceived, gapSize, pnBeforeLoss, false)
 	}
 }
 
-func (q *LogWindow) addLossEvent(ts, gapSize, pn uint64, sortedInsert bool) {
+func (q *LogWindow) addLossEvent(ts, gapSize, lastPnInLossRange uint64, sortedInsert bool) {
 	lossEvent := packetEvent{
 		lost:       true,
 		tsReceived: ts,
 		lossRange:  gapSize,
 		marked:     false,
-		pn:         pn,
+		pn:         lastPnInLossRange,
 	}
 
 	if !sortedInsert {
 		q.elements = append(q.elements, lossEvent)
 	} else {
-		q.sortedInsertPacketEvent(lossEvent)
+		ok := q.sortedInsertPacketEvent(lossEvent)
+		if !ok {
+			// duplicated loss event; nothing todo
+			return
+		}
 	}
 
 	q.lostPackets += gapSize
 	q.lossInts.addLoss(gapSize)
 }
 
-func (q *LogWindow) addPacketEvent(tsReceived uint64, size uint64, marked bool, queueBuildup bool, pn uint64) {
-	q.sortedInsertPacketEvent(packetEvent{
+func (q *LogWindow) addPacketEvent(tsReceived uint64, size uint64, marked bool, queueBuildup bool, pn uint64) (ok bool) {
+	ok = q.sortedInsertPacketEvent(packetEvent{
 		lost:         false,
 		marked:       marked,
 		size:         size,
@@ -210,23 +224,40 @@ func (q *LogWindow) addPacketEvent(tsReceived uint64, size uint64, marked bool, 
 		queueBuildup: queueBuildup,
 		pn:           pn,
 	})
+	if !ok {
+		return false
+	}
 
 	q.lossInts.addPacket()
+
+	return true
 }
 
 // sortedInsertPacketEvent inserts a packet event in sorted order based on tsReceived.
-func (q *LogWindow) sortedInsertPacketEvent(pe packetEvent) {
+// Does not insert duplicated packets if they have the same received timestamp.
+func (q *LogWindow) sortedInsertPacketEvent(newEvent packetEvent) (ok bool) {
 	inserted := false
-	for i, event := range q.elements {
-		if event.tsReceived >= pe.tsReceived {
-			// Insert before event at index i
-			q.elements = append(q.elements[:i], append([]packetEvent{pe}, q.elements[i:]...)...)
+	println("adding pn: ", newEvent.pn)
+	for i, currEvent := range q.elements {
+		if currEvent.tsReceived == newEvent.tsReceived && currEvent.pn == newEvent.pn {
+			println("packet duplicated: pn: ", newEvent.pn, " ts: ", newEvent.tsReceived)
+			// packet duplicated; do not instert
+			return false
+		}
+
+		if currEvent.tsReceived > newEvent.tsReceived {
+			println("inserting packet: pn: ", newEvent.pn, " ts: ", newEvent.tsReceived, " at index: ", i)
+			// Insert before first event that happend after newEvent
+			q.elements = append(q.elements[:i], append([]packetEvent{newEvent}, q.elements[i:]...)...)
 			inserted = true
 			break
 		}
 	}
 	if !inserted {
-		// If not inserted, append at the end
-		q.elements = append(q.elements, pe)
+		println("appending packet: pn: ", newEvent.pn, " ts: ", newEvent.tsReceived)
+		// If no later event found, append at the end
+		q.elements = append(q.elements, newEvent)
 	}
+
+	return true
 }

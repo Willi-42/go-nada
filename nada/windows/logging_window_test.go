@@ -71,18 +71,18 @@ var _ = Describe("LogWin", func() {
 			logWin.NewMediaPacketRecieved(2, 1, 8, true, false)
 			logWin.NewMediaPacketRecieved(6, 5, 20, false, false)
 
-			logWin.NewMediaPacketRecieved(5, 5, 20, false, false)
-			logWin.NewMediaPacketRecieved(4, 5, 20, false, false)
-			logWin.NewMediaPacketRecieved(6, 5, 20, false, false)
+			logWin.NewMediaPacketRecieved(5, 5, 20, false, false) // out-of-order not counted in sld
+			logWin.NewMediaPacketRecieved(4, 5, 20, false, false) // out-of-order not counted in sld
+			logWin.NewMediaPacketRecieved(6, 5, 20, false, false) // duplicate packet
 
-			Expect(logWin.arrivedPackets).To(Equal(uint64(6)))
+			Expect(logWin.arrivedPackets).To(Equal(uint64(3)))
 			Expect(logWin.markedPackets).To(Equal(uint64(1)))
-			Expect(logWin.receivedBits).To(Equal(uint64(100)))
+			Expect(logWin.receivedBits).To(Equal(uint64(40)))
 			Expect(logWin.lostPackets).To(Equal(uint64(4)))
 			Expect(logWin.queueBuildupCnt).To(BeZero())
 
 			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
-			Expect(packetsSinceLoss).To(Equal(uint64(7)))
+			Expect(packetsSinceLoss).To(Equal(uint64(4))) // gap size also counts as loss interval
 			Expect(gotLoss).To(BeTrue())
 			Expect(logWin.lastPn).To(Equal(uint64(6)))
 		})
@@ -293,9 +293,9 @@ var _ = Describe("LogWin", func() {
 
 			logWin.NewMediaPacketRecieved(213, 105, 20, false, true)
 
-			Expect(logWin.arrivedPackets).To(Equal(uint64(6)))
+			Expect(logWin.arrivedPackets).To(Equal(uint64(5))) // empty packets and reordered packet not counted
 			Expect(logWin.markedPackets).To(Equal(uint64(2)))
-			Expect(logWin.receivedBits).To(Equal(uint64(58)))
+			Expect(logWin.receivedBits).To(Equal(uint64(50)))
 			Expect(logWin.lostPackets).To(Equal(uint64(7)))
 			Expect(logWin.queueBuildupCnt).To(Equal(uint64(3)))
 
@@ -306,9 +306,9 @@ var _ = Describe("LogWin", func() {
 
 			logWin.UpdateStats(105)
 
-			Expect(logWin.arrivedPackets).To(Equal(uint64(4)))
+			Expect(logWin.arrivedPackets).To(Equal(uint64(3)))
 			Expect(logWin.markedPackets).To(Equal(uint64(1)))
-			Expect(logWin.receivedBits).To(Equal(uint64(48)))
+			Expect(logWin.receivedBits).To(Equal(uint64(40)))
 			Expect(logWin.lostPackets).To(Equal(uint64(7)))
 			Expect(logWin.queueBuildupCnt).To(Equal(uint64(2)))
 
@@ -440,6 +440,75 @@ var _ = Describe("LogWin", func() {
 			Expect(logWin.elements[2].pn).To(Equal(uint64(210)))
 			Expect(logWin.elements[3].pn).To(Equal(uint64(203)))
 			Expect(logWin.elements[4].pn).To(Equal(uint64(204)))
+		})
+
+		It("Last-n feedback", func() {
+			logWin := NewLogWindow(10, 2)
+			logWin.lastPn = 200
+			logWin.gotFirstPacket = true
+
+			Expect(logWin.windowSize).To(Equal(uint64(10)))
+
+			// first feedback
+			logWin.NewMediaPacketRecieved(201, 100, 12, false, false)
+			logWin.NewMediaPacketRecieved(202, 101, 8, true, false)
+			logWin.NewMediaPacketRecieved(203, 105, 20, false, false)
+
+			// second feedback
+			logWin.NewMediaPacketRecieved(201, 100, 12, false, false)
+			logWin.NewMediaPacketRecieved(202, 101, 8, true, false)
+			logWin.NewMediaPacketRecieved(203, 105, 20, false, false)
+			logWin.NewMediaPacketRecieved(204, 106, 10, false, false)
+
+			// third feedback; only dups
+			logWin.NewMediaPacketRecieved(203, 105, 20, false, false)
+			logWin.NewMediaPacketRecieved(204, 106, 10, false, false)
+
+			Expect(logWin.arrivedPackets).To(Equal(uint64(4)))
+			Expect(logWin.markedPackets).To(Equal(uint64(1)))
+			Expect(logWin.receivedBits).To(Equal(uint64(50)))
+			Expect(logWin.lostPackets).To(BeZero())
+			Expect(logWin.queueBuildupCnt).To(BeZero())
+
+			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
+			Expect(packetsSinceLoss).To(Equal(uint64(0)))
+			Expect(gotLoss).To(BeFalse())
+			Expect(logWin.lastPn).To(Equal(uint64(204)))
+
+			logWin.UpdateStats(107)
+
+			Expect(logWin.arrivedPackets).To(Equal(uint64(4)))
+			Expect(logWin.markedPackets).To(Equal(uint64(1)))
+			Expect(logWin.receivedBits).To(Equal(uint64(50)))
+			Expect(logWin.lostPackets).To(BeZero())
+			Expect(logWin.queueBuildupCnt).To(BeZero())
+
+			packetsSinceLoss, gotLoss = logWin.PacketsSinceLoss()
+			Expect(packetsSinceLoss).To(Equal(uint64(0)))
+			Expect(gotLoss).To(BeFalse())
+			Expect(logWin.lastPn).To(Equal(uint64(204)))
+		})
+
+		It("sld: packets out of order, one dup", func() {
+			logWin := NewLogWindow(10, 2)
+
+			logWin.NewMediaPacketRecievedNoGapCheck(0, 0, 12, false, false)
+			logWin.NewMediaPacketRecievedNoGapCheck(2, 1, 8, true, false)
+			logWin.NewMediaPacketRecievedNoGapCheck(6, 5, 20, false, false)
+			logWin.NewMediaPacketRecievedNoGapCheck(5, 5, 20, false, false)
+			logWin.NewMediaPacketRecievedNoGapCheck(4, 5, 20, false, false)
+			logWin.NewMediaPacketRecievedNoGapCheck(6, 5, 20, false, false) // duplicate packet
+
+			Expect(logWin.arrivedPackets).To(Equal(uint64(5)))
+			Expect(logWin.markedPackets).To(Equal(uint64(1)))
+			Expect(logWin.receivedBits).To(Equal(uint64(80)))
+			Expect(logWin.queueBuildupCnt).To(BeZero())
+
+			// no implicit loss tracking in sld
+			Expect(logWin.lostPackets).To(Equal(uint64(0)))
+			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
+			Expect(packetsSinceLoss).To(Equal(uint64(0)))
+			Expect(gotLoss).To(BeFalse())
 		})
 	})
 })
