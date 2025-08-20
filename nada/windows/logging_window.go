@@ -7,7 +7,7 @@ type packetEvent struct {
 	size         uint64
 	tsReceived   uint64
 	lossRange    uint64 // for lost packets in a range
-	pn           uint64
+	pNr          uint64
 }
 
 // LogWindow is a logging window
@@ -39,224 +39,220 @@ func NewLogWindow(sizeInMicroS uint64, lossIntervalSize int) *LogWindow {
 	}
 }
 
-func (q *LogWindow) LostPackets() uint64 {
-	return q.lostPackets
+func (l *LogWindow) LostPackets() uint64 {
+	return l.lostPackets
 }
 
-func (q *LogWindow) MarkedPackets() uint64 {
-	return q.markedPackets
+func (l *LogWindow) MarkedPackets() uint64 {
+	return l.markedPackets
 }
 
-func (q *LogWindow) ArrivedPackets() uint64 {
-	return q.arrivedPackets
+func (l *LogWindow) ArrivedPackets() uint64 {
+	return l.arrivedPackets
 }
 
-func (q *LogWindow) ReceivedBits() uint64 {
-	return q.receivedBits
+func (l *LogWindow) ReceivedBits() uint64 {
+	return l.receivedBits
 }
 
-func (q *LogWindow) PacketsSinceLoss() (uint64, bool /* got loss*/) {
-	return q.lossInts.currentInt()
+func (l *LogWindow) PacketsSinceLoss() (uint64, bool /* got loss*/) {
+	return l.lossInts.currentInt()
 }
 
 // QueueBuildup in current window?
-func (q *LogWindow) QueueBuildup() bool {
-	return q.queueBuildupCnt != 0
+func (l *LogWindow) QueueBuildup() bool {
+	return l.queueBuildupCnt != 0
 }
 
-func (q *LogWindow) AvgLossInterval() float64 {
-	return q.lossInts.avgLossInt()
+func (l *LogWindow) AvgLossInterval() float64 {
+	return l.lossInts.avgLossInt()
 }
 
-func (q *LogWindow) AddEmptyPacket(pn, tsReceived uint64) {
-	if !q.gotFirstPacket {
-		q.lastPn = pn
-		q.gotFirstPacket = true
+func (l *LogWindow) AddEmptyPacket(pNr, tsReceived uint64) {
+	if !l.gotFirstPacket {
+		l.lastPn = pNr
+		l.gotFirstPacket = true
 
-	} else if pn > q.lastPn {
+	} else if pNr > l.lastPn {
 		// only for packets that arrived in order
-		q.checkForGaps(pn, tsReceived)
-		q.lastPn = pn
+		l.checkForGaps(pNr, tsReceived)
+		l.lastPn = pNr
 	}
 }
 
 // AddLostPacket to register a loss if detected by app.
 // For loss detection at sender side
-func (q *LogWindow) AddLostPacket(pn, tsReceived uint64) {
-	q.addLossEvent(tsReceived, 1, pn, true)
-	q.lastPn = pn
+func (l *LogWindow) AddLostPacket(pNr, tsReceived uint64) {
+	l.addLossEvent(pNr, tsReceived, 1, true)
+	l.lastPn = pNr
 }
 
-func (q *LogWindow) NewMediaPacketRecieved(
-	pn uint64,
+func (l *LogWindow) NewMediaPacketRecieved(
+	pNr uint64,
 	tsReceived uint64,
 	size uint64,
 	marked bool,
 	queueBuildup bool,
 ) {
-	if !q.gotFirstPacket {
-		q.lastPn = pn
-		q.gotFirstPacket = true
+	if !l.gotFirstPacket {
+		l.lastPn = pNr
+		l.gotFirstPacket = true
 
-	} else if pn <= q.lastPn {
+	} else if pNr <= l.lastPn {
 		// do not register packets that arrived out of order
 		return
 	}
 
-	q.checkForGaps(pn, tsReceived)
-	q.NewMediaPacketRecievedNoGapCheck(pn, tsReceived, size, marked, queueBuildup)
+	l.checkForGaps(pNr, tsReceived)
+	l.NewMediaPacketRecievedNoGapCheck(pNr, tsReceived, size, marked, queueBuildup)
 }
 
-func (q *LogWindow) NewMediaPacketRecievedNoGapCheck(
-	pn uint64,
+func (l *LogWindow) NewMediaPacketRecievedNoGapCheck(
+	pNr uint64,
 	tsReceived uint64,
 	size uint64,
 	marked bool,
 	queueBuildup bool,
 ) {
-	ok := q.addPacketEvent(tsReceived, size, marked, queueBuildup, pn)
+	ok := l.addPacketEvent(pNr, tsReceived, size, marked, queueBuildup)
 	if !ok {
 		// packet duplicated; ignore
 		return
 	}
 
-	q.receivedBits += size
-	q.arrivedPackets++
+	l.receivedBits += size
+	l.arrivedPackets++
 
 	if marked {
-		q.markedPackets++
+		l.markedPackets++
 	}
 
 	if queueBuildup {
-		q.queueBuildupCnt++
+		l.queueBuildupCnt++
 	}
 
-	if pn < q.lastPn {
+	if pNr < l.lastPn {
 		// packet arrived out of order, do not update lastPn
 		return
 	}
 
-	q.lastPn = pn
+	l.lastPn = pNr
 }
 
-func (q *LogWindow) UpdateStats(currentTime uint64) {
-	if currentTime <= q.windowSize {
+func (l *LogWindow) UpdateStats(currentTime uint64) {
+	if currentTime <= l.windowSize {
 		return
 	}
 
-	threashold := currentTime - q.windowSize
+	threashold := currentTime - l.windowSize
 	discardIndex := 0
 
-	for _, event := range q.elements {
+	for _, event := range l.elements {
 		if event.tsReceived <= threashold {
 			discardIndex++
 
 			if event.lost {
-				q.lostPackets -= event.lossRange
+				l.lostPackets -= event.lossRange
 				continue
 			}
 
 			if event.marked {
-				q.markedPackets--
+				l.markedPackets--
 			}
 
 			if event.queueBuildup {
-				q.queueBuildupCnt--
+				l.queueBuildupCnt--
 			}
 
-			q.arrivedPackets--
-			q.receivedBits -= event.size
+			l.arrivedPackets--
+			l.receivedBits -= event.size
 		}
 	}
 
 	// drop old elements
-	q.elements = q.elements[discardIndex:] // TODO: maybe inefficient
+	l.elements = l.elements[discardIndex:] // TODO: maybe inefficient
 }
 
-func (q *LogWindow) checkForGaps(pn, tsReceived uint64) {
+func (l *LogWindow) checkForGaps(pNr, tsReceived uint64) {
 	// skip gap calc for first packet and duplicated packets
-	if pn == q.lastPn {
+	if pNr == l.lastPn {
 		return
 	}
 
 	// missing packets are considered lost
-	gapSize := pn - q.lastPn - 1
+	gapSize := pNr - l.lastPn - 1
 
 	// packet gap
 	if gapSize != 0 {
 		pnBeforeLoss := uint64(0)
-		if pn > 0 {
-			pnBeforeLoss = pn - 1
+		if pNr > 0 {
+			pnBeforeLoss = pNr - 1
 		}
-		q.addLossEvent(tsReceived, gapSize, pnBeforeLoss, false)
+		l.addLossEvent(pnBeforeLoss, tsReceived, gapSize, false)
 	}
 }
 
-func (q *LogWindow) addLossEvent(ts, gapSize, lastPnInLossRange uint64, sortedInsert bool) {
+func (l *LogWindow) addLossEvent(lastPnInLossRange, ts, gapSize uint64, sortedInsert bool) {
 	lossEvent := packetEvent{
 		lost:       true,
 		tsReceived: ts,
 		lossRange:  gapSize,
 		marked:     false,
-		pn:         lastPnInLossRange,
+		pNr:        lastPnInLossRange,
 	}
 
 	if !sortedInsert {
-		q.elements = append(q.elements, lossEvent)
+		l.elements = append(l.elements, lossEvent)
 	} else {
-		ok := q.sortedInsertPacketEvent(lossEvent)
+		ok := l.sortedInsertPacketEvent(lossEvent)
 		if !ok {
 			// duplicated loss event; nothing todo
 			return
 		}
 	}
 
-	q.lostPackets += gapSize
-	q.lossInts.addLoss(gapSize)
+	l.lostPackets += gapSize
+	l.lossInts.addLoss(gapSize)
 }
 
-func (q *LogWindow) addPacketEvent(tsReceived uint64, size uint64, marked bool, queueBuildup bool, pn uint64) (ok bool) {
-	ok = q.sortedInsertPacketEvent(packetEvent{
+func (l *LogWindow) addPacketEvent(pNr, tsReceived, size uint64, marked bool, queueBuildup bool) (ok bool) {
+	ok = l.sortedInsertPacketEvent(packetEvent{
 		lost:         false,
 		marked:       marked,
 		size:         size,
 		tsReceived:   tsReceived,
 		queueBuildup: queueBuildup,
-		pn:           pn,
+		pNr:          pNr,
 	})
 	if !ok {
 		return false
 	}
 
-	q.lossInts.addPacket()
+	l.lossInts.addPacket()
 
 	return true
 }
 
 // sortedInsertPacketEvent inserts a packet event in sorted order based on tsReceived.
 // Does not insert duplicated packets if they have the same received timestamp.
-func (q *LogWindow) sortedInsertPacketEvent(newEvent packetEvent) (ok bool) {
+func (l *LogWindow) sortedInsertPacketEvent(newEvent packetEvent) (ok bool) {
 	inserted := false
-	println("adding pn: ", newEvent.pn)
-	for i, currEvent := range q.elements {
-		if currEvent.tsReceived == newEvent.tsReceived && currEvent.pn == newEvent.pn {
-			println("packet duplicated: pn: ", newEvent.pn, " ts: ", newEvent.tsReceived)
+	for i, currEvent := range l.elements {
+		if currEvent.tsReceived == newEvent.tsReceived && currEvent.pNr == newEvent.pNr {
 			// packet duplicated; do not instert
 			return false
 		}
 
 		if currEvent.tsReceived > newEvent.tsReceived {
-			println("inserting packet: pn: ", newEvent.pn, " ts: ", newEvent.tsReceived, " at index: ", i)
 			// Insert before first event that happend after newEvent
-			q.elements = append(q.elements[:i], append([]packetEvent{newEvent}, q.elements[i:]...)...)
+			l.elements = append(l.elements[:i], append([]packetEvent{newEvent}, l.elements[i:]...)...)
 			inserted = true
 			break
 		}
 	}
 	if !inserted {
-		println("appending packet: pn: ", newEvent.pn, " ts: ", newEvent.tsReceived)
 		// If no later event found, append at the end
-		q.elements = append(q.elements, newEvent)
+		l.elements = append(l.elements, newEvent)
 	}
 
 	return true

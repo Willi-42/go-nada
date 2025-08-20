@@ -416,9 +416,9 @@ var _ = Describe("LogWin", func() {
 			// sorted insert based on tsReceived
 			logWin.AddLostPacket(203, 125)
 
-			Expect(logWin.elements[0].pn).To(Equal(uint64(201)))
-			Expect(logWin.elements[1].pn).To(Equal(uint64(203)))
-			Expect(logWin.elements[2].pn).To(Equal(uint64(202)))
+			Expect(logWin.elements[0].pNr).To(Equal(uint64(201)))
+			Expect(logWin.elements[1].pNr).To(Equal(uint64(203)))
+			Expect(logWin.elements[2].pNr).To(Equal(uint64(202)))
 			Expect(len(logWin.elements)).To(Equal(3))
 		})
 
@@ -435,11 +435,11 @@ var _ = Describe("LogWin", func() {
 			logWin.AddLostPacket(210, 102)
 			logWin.AddLostPacket(203, 103)
 
-			Expect(logWin.elements[0].pn).To(Equal(uint64(201)))
-			Expect(logWin.elements[1].pn).To(Equal(uint64(202)))
-			Expect(logWin.elements[2].pn).To(Equal(uint64(210)))
-			Expect(logWin.elements[3].pn).To(Equal(uint64(203)))
-			Expect(logWin.elements[4].pn).To(Equal(uint64(204)))
+			Expect(logWin.elements[0].pNr).To(Equal(uint64(201)))
+			Expect(logWin.elements[1].pNr).To(Equal(uint64(202)))
+			Expect(logWin.elements[2].pNr).To(Equal(uint64(210)))
+			Expect(logWin.elements[3].pNr).To(Equal(uint64(203)))
+			Expect(logWin.elements[4].pNr).To(Equal(uint64(204)))
 		})
 
 		It("Last-n feedback", func() {
