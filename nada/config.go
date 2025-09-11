@@ -52,6 +52,7 @@ type Config struct {
 
 	DeactivateQDelayWrapping bool // do not apply wrapping of qdely
 	SmoothDelaySamples       bool // Smooth delay samples with exponential moving average
+	UseDefaultGradualUpdates bool // Use default gradual update mode that depends on MaxRate
 }
 
 func populateConfig(c *Config) *Config {
@@ -82,7 +83,7 @@ func populateConfig(c *Config) *Config {
 	c.DMARK = setDefaultMs(c.DMARK, DMARK)
 	c.ALPHA = setDefaultFloat(c.ALPHA, ALPHA)
 
-	// DeactivateQDelayWrapping & SmoothDelaySamples are false if not given == default
+	// UseDefaultGradualUpdates, DeactivateQDelayWrapping & SmoothDelaySamples are false if not given == default
 
 	return c
 }

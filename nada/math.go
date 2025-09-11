@@ -84,7 +84,12 @@ func gradualUpdateRate(
 	}
 
 	// offset to the ideal congestion
-	xIdeal := conf.Priority * float64(conf.RefCongLevel) * (float64(conf.MaxRate) / float64(prevRefRate))
+	xIdeal := conf.Priority * float64(conf.RefCongLevel)
+
+	if conf.UseDefaultGradualUpdates {
+		xIdeal *= float64(conf.MaxRate) / float64(prevRefRate)
+	}
+
 	xOffset := float64(xCurr) - xIdeal
 
 	// current congestion signal change
