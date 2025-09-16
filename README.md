@@ -7,6 +7,11 @@ NADA is a real-time congestion control algorithm.
 
 NADA RFC: [RFC 8698](https://www.rfc-editor.org/rfc/rfc8698)
 
+## Differences to RFC 8689
+* Calculation 5 of [Section 4.3](https://www.rfc-editor.org/rfc/rfc8698#name-sender-side-algorithm) has been changed. We removed the dependence on the max target rate (RMAX).
+  * Can be reactivated by setting `UseDefaultGradualUpdates` to true.
+* Maximal increment of the target rate in Gradual Update Mode is clipped to an increase of `MaxGradualUpdateFactor`.
+
 ## Versions
 * **Split NADA**: NADA runs at sender and at the reciever.
 * **Sender-only NADA**: NADA only runs at the sender.
