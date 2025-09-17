@@ -12,24 +12,14 @@ NADA RFC: [RFC 8698](https://www.rfc-editor.org/rfc/rfc8698)
   * Can be reactivated by setting `UseDefaultGradualUpdates` to true.
 * Maximal increment of the target rate in Gradual Update Mode is clipped to an increase of `MaxGradualUpdateFactor`.
 
+**Loss detection**
+* This NADA implementation registers losses at the sender side. For example, through NACKs. In comparison, RFC 8689 detects losses purely through sequence number skips.
+
 ## Versions
 * **Split NADA**: NADA runs at sender and at the reciever.
 * **Sender-only NADA**: NADA only runs at the sender.
 
-### **Split** with Receiver Loss Detection
-Loss are detected at the receiver side.
-
-#### Receiver Side
-* Register arrived packets with `PacketArrived`.
-* Register a packet without a timestamp with `PacketArrivedWithoutTs`.
-* To generate the feedback for the sender, use `GenerateFeedbackRLD`.
-
-#### Sender Side
-* Register the arrived feedback with `FeedbackReport`.
-  `FeedbackReport` returns the new media rate.
-
-### **Split** with Sender Loss Detection
-Losses are detected at the sender side.
+### **Split NADA** 
 
 #### Receiver Side
 * Register arrived packets with `PacketArrived`.
@@ -41,10 +31,16 @@ Losses are detected at the sender side.
 * Register the arrived feedback with `FeedbackReport`.
   `FeedbackReport` returns the new media rate.
 
+#### Feedback
+The feedback contains three values. Namely, the current receive rate, the newest delay measurement, and a boolean that indicates delay build-up.
 
-### **Sender-only**
+
+### **Sender-only NADA**
 * Requires feedback at the configured interval.
 * Regsitered feedback with `OnAck`. Returns the new target rate.
+
+#### Feedback
+The feedback is a list of Acknowledgments. This list also contains the NACKs.
 
 ## Tunning Parameters
 

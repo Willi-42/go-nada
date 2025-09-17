@@ -55,6 +55,16 @@ func wrapQDelay(conf Config, qDelay uint64, logWin *windows.LogWindow) uint64 {
 	return updatedDelay
 }
 
+func SmoothDelaySamples(conf Config, newDelay, oldDelay uint64) uint64 {
+	// exponential moving average
+	if conf.SmoothDelaySamples {
+		beta := 0.9
+		return uint64((1-beta)*float64(newDelay) + beta*float64(oldDelay))
+	} else {
+		return newDelay
+	}
+}
+
 // rampUpRate calculates the reference rate in rampUp mode
 func rampUpRate(
 	config Config,

@@ -6,7 +6,6 @@ type packetEvent struct {
 	queueBuildup bool
 	size         uint64
 	tsReceived   uint64
-	lossRange    uint64 // for lost packets in a range
 	pNr          uint64
 }
 
@@ -68,46 +67,14 @@ func (l *LogWindow) AvgLossInterval() float64 {
 	return l.lossInts.avgLossInt()
 }
 
-func (l *LogWindow) AddEmptyPacket(pNr, tsReceived uint64) {
-	if !l.gotFirstPacket {
-		l.lastPn = pNr
-		l.gotFirstPacket = true
-
-	} else if pNr > l.lastPn {
-		// only for packets that arrived in order
-		l.checkForGaps(pNr, tsReceived)
-		l.lastPn = pNr
-	}
-}
-
 // AddLostPacket to register a loss if detected by app.
 // For loss detection at sender side
 func (l *LogWindow) AddLostPacket(pNr, tsReceived uint64) {
-	l.addLossEvent(pNr, tsReceived, 1, true)
+	l.addLossEvent(pNr, tsReceived, true)
 	l.lastPn = pNr
 }
 
 func (l *LogWindow) NewMediaPacketRecieved(
-	pNr uint64,
-	tsReceived uint64,
-	size uint64,
-	marked bool,
-	queueBuildup bool,
-) {
-	if !l.gotFirstPacket {
-		l.lastPn = pNr
-		l.gotFirstPacket = true
-
-	} else if pNr <= l.lastPn {
-		// do not register packets that arrived out of order
-		return
-	}
-
-	l.checkForGaps(pNr, tsReceived)
-	l.NewMediaPacketRecievedNoGapCheck(pNr, tsReceived, size, marked, queueBuildup)
-}
-
-func (l *LogWindow) NewMediaPacketRecievedNoGapCheck(
 	pNr uint64,
 	tsReceived uint64,
 	size uint64,
@@ -152,7 +119,7 @@ func (l *LogWindow) UpdateStats(currentTime uint64) {
 			discardIndex++
 
 			if event.lost {
-				l.lostPackets -= event.lossRange
+				l.lostPackets -= 1
 				continue
 			}
 
@@ -170,33 +137,13 @@ func (l *LogWindow) UpdateStats(currentTime uint64) {
 	}
 
 	// drop old elements
-	l.elements = l.elements[discardIndex:] // TODO: maybe inefficient
+	l.elements = l.elements[discardIndex:]
 }
 
-func (l *LogWindow) checkForGaps(pNr, tsReceived uint64) {
-	// skip gap calc for first packet and duplicated packets
-	if pNr == l.lastPn {
-		return
-	}
-
-	// missing packets are considered lost
-	gapSize := pNr - l.lastPn - 1
-
-	// packet gap
-	if gapSize != 0 {
-		pnBeforeLoss := uint64(0)
-		if pNr > 0 {
-			pnBeforeLoss = pNr - 1
-		}
-		l.addLossEvent(pnBeforeLoss, tsReceived, gapSize, false)
-	}
-}
-
-func (l *LogWindow) addLossEvent(lastPnInLossRange, ts, gapSize uint64, sortedInsert bool) {
+func (l *LogWindow) addLossEvent(lastPnInLossRange, ts uint64, sortedInsert bool) {
 	lossEvent := packetEvent{
 		lost:       true,
 		tsReceived: ts,
-		lossRange:  gapSize,
 		marked:     false,
 		pNr:        lastPnInLossRange,
 	}
@@ -211,8 +158,8 @@ func (l *LogWindow) addLossEvent(lastPnInLossRange, ts, gapSize uint64, sortedIn
 		}
 	}
 
-	l.lostPackets += gapSize
-	l.lossInts.addLoss(gapSize)
+	l.lostPackets += 1
+	l.lossInts.addLoss()
 }
 
 func (l *LogWindow) addPacketEvent(pNr, tsReceived, size uint64, marked bool, queueBuildup bool) (ok bool) {
