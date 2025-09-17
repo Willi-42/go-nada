@@ -7,7 +7,7 @@ import (
 	"github.com/Willi-42/go-nada/nada/windows"
 )
 
-type SenderSLD struct {
+type Sender struct {
 	prevRate   uint64 // Previous reference rate based on network congestion
 	xPerv      uint64 // Previous value of aggregate congestion signal
 	lastReport uint64 // in micro sec
@@ -21,11 +21,11 @@ type SenderSLD struct {
 	logWin *windows.LogWindow
 }
 
-func NewSenderSLD(config Config) SenderSLD {
+func NewSender(config Config) Sender {
 	configPopulated := populateConfig(&config)
 	logWinSize := configPopulated.LogWin
 
-	return SenderSLD{
+	return Sender{
 		prevRate: configPopulated.StartRate,
 		config:   configPopulated,
 		logWin:   windows.NewLogWindow(logWinSize, 8), // TODO: add to config
@@ -35,14 +35,14 @@ func NewSenderSLD(config Config) SenderSLD {
 // PacketDelivered register a delivered packet.
 // QueueBuildUp is calculated at receiver.
 // Use arrival ts of Ack for the LogWindow.
-func (s *SenderSLD) PacketDelivered(
+func (s *Sender) PacketDelivered(
 	packetNumber uint64,
 	ackTs uint64,
 	packetSize uint64,
 	marked bool,
 ) {
 	s.mtx.Lock()
-	s.logWin.NewMediaPacketRecievedNoGapCheck(packetNumber, ackTs, packetSize, marked, false)
+	s.logWin.NewMediaPacketRecieved(packetNumber, ackTs, packetSize, marked, false)
 
 	s.logWin.UpdateStats(ackTs)
 
@@ -50,7 +50,7 @@ func (s *SenderSLD) PacketDelivered(
 }
 
 // LostPacket registers a lost packet
-func (r *SenderSLD) LostPacket(pn, tsReceived uint64) {
+func (r *Sender) LostPacket(pn, tsReceived uint64) {
 	r.mtx.Lock()
 	r.logWin.AddLostPacket(pn, tsReceived)
 	r.mtx.Unlock()
@@ -59,7 +59,7 @@ func (r *SenderSLD) LostPacket(pn, tsReceived uint64) {
 // FeedbackReport calculates the new rate with the feedback from the receiver.
 // recvRate, delay, queueBuildup are from the receiver feedback.
 // rtt is the current rtt.
-func (s *SenderSLD) FeedbackReport(feedback FeedbackSLD, rtt time.Duration) (newRate uint64) {
+func (s *Sender) FeedbackReport(feedback Feedback, rtt time.Duration) (newRate uint64) {
 	s.mtx.Lock()
 	currTime := uint64(time.Now().UnixMicro())
 

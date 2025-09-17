@@ -9,12 +9,10 @@ import (
 
 // Receiver: all timestamps are in microseconds
 type Receiver struct {
-	baseDelay uint64 // estimated baseline delay (d_base)
-	qDelay    uint64 // estimated queuing delay (d_queue)
-	recvRate  uint64 // receiving rate (r_recv)
-
-	lossRatio    float64 // estimated packet loss ratio (p_loss)
-	markingRatio float64 // estimated packet ECN marking ratio (p_mark)
+	baseDelay    uint64 // estimated baseline delay (d_base)
+	qDelay       uint64 // estimated queuing delay (d_queue)
+	recvRate     uint64 // receiving rate (r_recv)
+	lastArraival uint64 // timestamp of last arrived packet
 
 	config   *Config
 	logWin   *windows.LogWindow
@@ -26,18 +24,12 @@ func NewReceiver(config Config) Receiver {
 	logWinSize := configPopulated.LogWin
 
 	return Receiver{
-		baseDelay: math.MaxUint64, // set to infinity
-		config:    configPopulated,
-		logWin:    windows.NewLogWindow(logWinSize, 8), // TODO: add to config
-		delayWin:  windows.NewDelayWindow(15),          // TODO: add to config
+		baseDelay:    math.MaxUint64, // set to infinity
+		config:       configPopulated,
+		logWin:       windows.NewLogWindow(logWinSize, 8), // TODO: add to config
+		delayWin:     windows.NewDelayWindow(15),          // TODO: add to config
+		lastArraival: 0,
 	}
-}
-
-// PacketArrivedWithoutTs can be used to register the
-// arrival of packets without a ts, e.g. quic probe packets.
-// Have to be registered, otherwise considered lost in RLD mode.
-func (r *Receiver) PacketArrivedWithoutTs(packetNumber uint64, recvTs time.Time) {
-	r.logWin.AddEmptyPacket(packetNumber, uint64(recvTs.UnixMicro()))
 }
 
 // PacketArrived registers a new arrived packet.
@@ -58,23 +50,22 @@ func (r *Receiver) PacketArrived(
 	oneWayDelay := recvTs - sentTs
 
 	// update base delay
+	oldBase := r.baseDelay
 	r.baseDelay = min(r.baseDelay, oneWayDelay)
 
 	// TODO: recompute base delay from time to time e.g. 10min
 
-	// update queue delay
-	currDelay := oneWayDelay - r.baseDelay
+	// update queue delay; only if new measurement
+	if recvTs >= r.lastArraival {
+		r.lastArraival = recvTs
+		currDelay := oneWayDelay - r.baseDelay
+		r.addNewDelay(currDelay)
 
-	// filter qdelay with min filter
-	r.delayWin.AddSample(currDelay)
-	newDelay := r.delayWin.MinDelay()
-
-	// exponential moving average
-	if r.config.SmoothDelaySamples {
-		beta := 0.9
-		r.qDelay = uint64((1-beta)*float64(newDelay) + beta*float64(r.qDelay))
-	} else {
-		r.qDelay = newDelay
+	} else if r.baseDelay != oldBase {
+		// we skipped qdelay calculation
+		// but the base delay has changed
+		updatedDelay := r.qDelay + oldBase - r.baseDelay
+		r.addNewDelay(updatedDelay)
 	}
 
 	// check for queue build-up
@@ -87,11 +78,6 @@ func (r *Receiver) PacketArrived(
 	r.logWin.NewMediaPacketRecieved(packetNumber, recvTs, packetSizeBit, marked, queueBuildup)
 	r.logWin.UpdateStats(recvTs)
 
-	// calculate loss/marking ratio
-	totoalPackets := r.logWin.ArrivedPackets() + r.logWin.LostPackets()
-	r.lossRatio = smoothedRatio(*r.config, r.logWin.LostPackets(), totoalPackets, r.lossRatio)
-	r.markingRatio = smoothedRatio(*r.config, r.logWin.MarkedPackets(), totoalPackets, r.markingRatio)
-
 	// update reciving rate
 	// TODO: this might overflow
 	recvBitsSeconds := r.logWin.ReceivedBits() * 1000000 // to convert micro seconds to seconds
@@ -99,27 +85,17 @@ func (r *Receiver) PacketArrived(
 	r.recvRate = recvBitsSeconds / r.config.LogWin
 }
 
-// GenerateFeedbackRLD: On time to send a new feedback report (t_curr - t_last > DELTA)
-// Returns reciving rate, aggregated congestion signal and rampUpMode.
-func (r *Receiver) GenerateFeedbackRLD() (feedback FeedbackRLD) {
-	feedback.RecvRate = r.recvRate
+func (r *Receiver) addNewDelay(newDelay uint64) {
+	// filter qdelay with min filter
+	r.delayWin.AddSample(newDelay)
+	minDelay := r.delayWin.MinDelay()
 
-	wrappedDelay := wrapQDelay(*r.config, r.qDelay, r.logWin)
-
-	// calculate aggregate congestion signal x_curr
-	feedback.XCurr = aggregateCng(*r.config, wrappedDelay, r.markingRatio, r.lossRatio)
-
-	// determine mode of rate adaptation for sender: rmode
-	// if no packet loss in logwin and no queue build up in current LOGWIN
-	if r.logWin.LostPackets() == 0 && !r.logWin.QueueBuildup() {
-		feedback.RampUpMode = true
-	}
-
-	return feedback
+	r.qDelay = SmoothDelaySamples(*r.config, minDelay, r.qDelay)
 }
 
-// GenerateFeedbackSLD for loss detection at sender
-func (r *Receiver) GenerateFeedbackSLD() (feedback FeedbackSLD) {
+// GenerateFeedback for loss detection at sender.
+// On time to send a new feedback report (t_curr - t_last > DELTA).
+func (r *Receiver) GenerateFeedback() (feedback Feedback) {
 	feedback.RecvRate = r.recvRate
 	feedback.Delay = r.qDelay
 	feedback.QueueBuildup = r.logWin.QueueBuildup()

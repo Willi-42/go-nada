@@ -33,9 +33,9 @@ func newLossIntervall(maxsize int) *lossInterval {
 }
 
 // addLoss creates new loss interval
-func (l *lossInterval) addLoss(lossGap uint64) {
+func (l *lossInterval) addLoss() {
 
-	l.intervals = append([]uint64{lossGap}, l.intervals...)
+	l.intervals = append([]uint64{1}, l.intervals...)
 
 	// drop oldest interval
 	if len(l.intervals) >= l.maxsize {
@@ -59,7 +59,9 @@ func (l *lossInterval) currentInt() (uint64 /* first interval */, bool /* loss o
 		return 0, false
 	}
 
-	return l.intervals[0], true
+	packetsSinceLoss := l.intervals[0] - 1 // do not count lost packet
+
+	return packetsSinceLoss, true
 }
 
 // Measured average loss interval in packet count
