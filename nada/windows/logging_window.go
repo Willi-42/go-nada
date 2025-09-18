@@ -15,26 +15,21 @@ type LogWindow struct {
 	windowSize uint64        // size of the logging window in mirco seconds
 	lossInts   *lossInterval // for the avg loss interval calculation
 
-	lastPn uint64
-
 	// stats of current window
 	arrivedPackets  uint64
 	markedPackets   uint64
 	lostPackets     uint64
 	receivedBits    uint64
 	queueBuildupCnt uint64 // number of times a queue buildup was detected
-
-	gotFirstPacket bool // to register the sequence number of our first packet as the starting point
 }
 
 // NewLogWindow creates a new logging window queue.
 // Size has to be in micro seconds!
 func NewLogWindow(sizeInMicroS uint64, lossIntervalSize int) *LogWindow {
 	return &LogWindow{
-		elements:       make([]packetEvent, 0),
-		windowSize:     sizeInMicroS,
-		lossInts:       newLossIntervall(lossIntervalSize),
-		gotFirstPacket: false,
+		elements:   make([]packetEvent, 0),
+		windowSize: sizeInMicroS,
+		lossInts:   newLossIntervall(lossIntervalSize),
 	}
 }
 
@@ -70,8 +65,7 @@ func (l *LogWindow) AvgLossInterval() float64 {
 // AddLostPacket to register a loss if detected by app.
 // For loss detection at sender side
 func (l *LogWindow) AddLostPacket(pNr, tsReceived uint64) {
-	l.addLossEvent(pNr, tsReceived, true)
-	l.lastPn = pNr
+	l.addLossEvent(pNr, tsReceived)
 }
 
 func (l *LogWindow) NewMediaPacketRecieved(
@@ -97,13 +91,6 @@ func (l *LogWindow) NewMediaPacketRecieved(
 	if queueBuildup {
 		l.queueBuildupCnt++
 	}
-
-	if pNr < l.lastPn {
-		// packet arrived out of order, do not update lastPn
-		return
-	}
-
-	l.lastPn = pNr
 }
 
 func (l *LogWindow) UpdateStats(currentTime uint64) {
@@ -140,7 +127,7 @@ func (l *LogWindow) UpdateStats(currentTime uint64) {
 	l.elements = l.elements[discardIndex:]
 }
 
-func (l *LogWindow) addLossEvent(lastPnInLossRange, ts uint64, sortedInsert bool) {
+func (l *LogWindow) addLossEvent(lastPnInLossRange, ts uint64) {
 	lossEvent := packetEvent{
 		lost:       true,
 		tsReceived: ts,
@@ -148,14 +135,10 @@ func (l *LogWindow) addLossEvent(lastPnInLossRange, ts uint64, sortedInsert bool
 		pNr:        lastPnInLossRange,
 	}
 
-	if !sortedInsert {
-		l.elements = append(l.elements, lossEvent)
-	} else {
-		ok := l.sortedInsertPacketEvent(lossEvent)
-		if !ok {
-			// duplicated loss event; nothing todo
-			return
-		}
+	ok := l.sortedInsertPacketEvent(lossEvent)
+	if !ok {
+		// duplicated loss event; nothing todo
+		return
 	}
 
 	l.lostPackets += 1
@@ -185,7 +168,7 @@ func (l *LogWindow) addPacketEvent(pNr, tsReceived, size uint64, marked bool, qu
 func (l *LogWindow) sortedInsertPacketEvent(newEvent packetEvent) (ok bool) {
 	inserted := false
 	for i, currEvent := range l.elements {
-		if currEvent.tsReceived == newEvent.tsReceived && currEvent.pNr == newEvent.pNr {
+		if currEvent.pNr == newEvent.pNr {
 			// packet duplicated; do not instert
 			return false
 		}

@@ -12,7 +12,7 @@ var _ = Describe("LogWin", func() {
 		It("1 packets no update", func() {
 			logWin := NewLogWindow(10, 2)
 			logWin.NewMediaPacketRecieved(0, 0, 12, false, false)
-			Expect(logWin.lastPn).To(Equal(uint64(0)))
+			Expect(logWin.elements[0].pNr).To(Equal(uint64(0)))
 
 			Expect(logWin.arrivedPackets).To(Equal(uint64(1)))
 			Expect(logWin.markedPackets).To(Equal(uint64(0)))
@@ -23,7 +23,7 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
 			Expect(packetsSinceLoss).To(Equal(uint64(0)))
 			Expect(gotLoss).To(BeFalse())
-			Expect(logWin.lastPn).To(Equal(uint64(0)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(0)))
 		})
 
 		It("3 packets no update", func() {
@@ -42,7 +42,7 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
 			Expect(packetsSinceLoss).To(Equal(uint64(0)))
 			Expect(gotLoss).To(BeFalse())
-			Expect(logWin.lastPn).To(Equal(uint64(2)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(2)))
 		})
 
 		It("3 packets with gap", func() {
@@ -61,7 +61,7 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
 			Expect(packetsSinceLoss).To(Equal(uint64(0)))
 			Expect(gotLoss).To(BeFalse())
-			Expect(logWin.lastPn).To(Equal(uint64(6)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(6)))
 		})
 
 		It("packets out of order", func() {
@@ -71,8 +71,8 @@ var _ = Describe("LogWin", func() {
 			logWin.NewMediaPacketRecieved(2, 1, 8, true, false)
 			logWin.NewMediaPacketRecieved(6, 5, 20, false, false)
 
-			logWin.NewMediaPacketRecieved(5, 5, 20, false, false) // out-of-order
-			logWin.NewMediaPacketRecieved(4, 5, 20, false, false) // out-of-order
+			logWin.NewMediaPacketRecieved(5, 4, 20, false, false) // out-of-order
+			logWin.NewMediaPacketRecieved(4, 4, 20, false, false) // out-of-order
 			logWin.NewMediaPacketRecieved(6, 5, 20, false, false) // duplicate packet
 
 			Expect(logWin.arrivedPackets).To(Equal(uint64(5))) // do not count dup
@@ -84,13 +84,11 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
 			Expect(packetsSinceLoss).To(Equal(uint64(0))) // gap size also counts as loss interval
 			Expect(gotLoss).To(BeFalse())
-			Expect(logWin.lastPn).To(Equal(uint64(6)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(6)))
 		})
 
 		It("3 packets with update", func() {
 			logWin := NewLogWindow(10, 2)
-			logWin.lastPn = 200
-			logWin.gotFirstPacket = true
 
 			Expect(logWin.windowSize).To(Equal(uint64(10)))
 
@@ -107,7 +105,7 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
 			Expect(packetsSinceLoss).To(Equal(uint64(0)))
 			Expect(gotLoss).To(BeFalse())
-			Expect(logWin.lastPn).To(Equal(uint64(203)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(203)))
 
 			logWin.UpdateStats(105)
 
@@ -120,13 +118,11 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss = logWin.PacketsSinceLoss()
 			Expect(packetsSinceLoss).To(Equal(uint64(0)))
 			Expect(gotLoss).To(BeFalse())
-			Expect(logWin.lastPn).To(Equal(uint64(203)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(203)))
 		})
 
 		It("update with old packets", func() {
 			logWin := NewLogWindow(10, 2)
-			logWin.lastPn = 197
-			logWin.gotFirstPacket = true
 
 			Expect(logWin.windowSize).To(Equal(uint64(10)))
 
@@ -146,7 +142,7 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
 			Expect(packetsSinceLoss).To(Equal(uint64(4)))
 			Expect(gotLoss).To(BeTrue())
-			Expect(logWin.lastPn).To(Equal(uint64(203)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(203)))
 
 			logWin.UpdateStats(105)
 
@@ -159,13 +155,11 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss = logWin.PacketsSinceLoss()
 			Expect(packetsSinceLoss).To(Equal(uint64(4)))
 			Expect(gotLoss).To(BeTrue())
-			Expect(logWin.lastPn).To(Equal(uint64(203)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(203)))
 		})
 
 		It("update with old packets and gaps", func() {
 			logWin := NewLogWindow(10, 2)
-			logWin.lastPn = 198
-			logWin.gotFirstPacket = true
 
 			Expect(logWin.windowSize).To(Equal(uint64(10)))
 
@@ -184,7 +178,7 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
 			Expect(gotLoss).To(BeFalse())
 			Expect(packetsSinceLoss).To(Equal(uint64(0)))
-			Expect(logWin.lastPn).To(Equal(uint64(213)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(213)))
 
 			logWin.UpdateStats(105)
 
@@ -197,13 +191,11 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss = logWin.PacketsSinceLoss()
 			Expect(gotLoss).To(BeFalse())
 			Expect(packetsSinceLoss).To(Equal(uint64(0)))
-			Expect(logWin.lastPn).To(Equal(uint64(213)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(213)))
 		})
 
 		It("update with old packets and lost packets that are removed", func() {
 			logWin := NewLogWindow(10, 2)
-			logWin.lastPn = 188
-			logWin.gotFirstPacket = true
 
 			Expect(logWin.windowSize).To(Equal(uint64(10)))
 
@@ -224,7 +216,7 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
 			Expect(gotLoss).To(BeTrue())
 			Expect(packetsSinceLoss).To(Equal(uint64(1)))
-			Expect(logWin.lastPn).To(Equal(uint64(203)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(203)))
 
 			logWin.UpdateStats(105)
 
@@ -237,13 +229,11 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss = logWin.PacketsSinceLoss()
 			Expect(gotLoss).To(BeTrue())
 			Expect(packetsSinceLoss).To(Equal(uint64(1)))
-			Expect(logWin.lastPn).To(Equal(uint64(203)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(203)))
 		})
 
 		It("3 packets with queue buildup with update", func() {
 			logWin := NewLogWindow(10, 2)
-			logWin.lastPn = 200
-			logWin.gotFirstPacket = true
 
 			Expect(logWin.windowSize).To(Equal(uint64(10)))
 
@@ -260,7 +250,7 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
 			Expect(gotLoss).To(BeFalse())
 			Expect(packetsSinceLoss).To(Equal(uint64(0)))
-			Expect(logWin.lastPn).To(Equal(uint64(203)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(203)))
 
 			logWin.UpdateStats(105)
 
@@ -273,13 +263,11 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss = logWin.PacketsSinceLoss()
 			Expect(gotLoss).To(BeFalse())
 			Expect(packetsSinceLoss).To(Equal(uint64(0)))
-			Expect(logWin.lastPn).To(Equal(uint64(203)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(203)))
 		})
 
 		It("update with old packets, gaps and skipped pns", func() {
 			logWin := NewLogWindow(10, 2)
-			logWin.lastPn = 198
-			logWin.gotFirstPacket = true
 
 			Expect(logWin.windowSize).To(Equal(uint64(10)))
 
@@ -306,7 +294,7 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
 			Expect(gotLoss).To(BeTrue())
 			Expect(packetsSinceLoss).To(Equal(uint64(2)))
-			Expect(logWin.lastPn).To(Equal(uint64(213)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(213)))
 
 			logWin.UpdateStats(105)
 
@@ -319,7 +307,7 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss = logWin.PacketsSinceLoss()
 			Expect(gotLoss).To(BeTrue())
 			Expect(packetsSinceLoss).To(Equal(uint64(2)))
-			Expect(logWin.lastPn).To(Equal(uint64(213)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(213)))
 		})
 
 		It("3 packets with update with non 0 starting seuqence nr", func() {
@@ -340,7 +328,7 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
 			Expect(packetsSinceLoss).To(Equal(uint64(0)))
 			Expect(gotLoss).To(BeFalse())
-			Expect(logWin.lastPn).To(Equal(uint64(203)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(203)))
 
 			logWin.UpdateStats(105)
 
@@ -353,7 +341,7 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss = logWin.PacketsSinceLoss()
 			Expect(packetsSinceLoss).To(Equal(uint64(0)))
 			Expect(gotLoss).To(BeFalse())
-			Expect(logWin.lastPn).To(Equal(uint64(203)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(203)))
 		})
 
 		It("first packet loss calc should not produce overflow start at non 0", func() {
@@ -448,8 +436,6 @@ var _ = Describe("LogWin", func() {
 
 		It("Last-n feedback", func() {
 			logWin := NewLogWindow(10, 2)
-			logWin.lastPn = 200
-			logWin.gotFirstPacket = true
 
 			Expect(logWin.windowSize).To(Equal(uint64(10)))
 
@@ -477,7 +463,7 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss := logWin.PacketsSinceLoss()
 			Expect(packetsSinceLoss).To(Equal(uint64(0)))
 			Expect(gotLoss).To(BeFalse())
-			Expect(logWin.lastPn).To(Equal(uint64(204)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(204)))
 
 			logWin.UpdateStats(107)
 
@@ -490,7 +476,7 @@ var _ = Describe("LogWin", func() {
 			packetsSinceLoss, gotLoss = logWin.PacketsSinceLoss()
 			Expect(packetsSinceLoss).To(Equal(uint64(0)))
 			Expect(gotLoss).To(BeFalse())
-			Expect(logWin.lastPn).To(Equal(uint64(204)))
+			Expect(pnNewestPacket(logWin)).To(Equal(uint64(204)))
 		})
 
 		It("sld: packets out of order, one dup", func() {
@@ -516,6 +502,13 @@ var _ = Describe("LogWin", func() {
 		})
 	})
 })
+
+func pnNewestPacket(loqWin *LogWindow) uint64 {
+	if len(loqWin.elements) == 0 {
+		return 0
+	}
+	return loqWin.elements[len(loqWin.elements)-1].pNr
+}
 
 func TestAll(t *testing.T) {
 	RegisterFailHandler(Fail)
