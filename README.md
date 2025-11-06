@@ -43,6 +43,8 @@ The feedback contains three values. Namely, the current receive rate, the newest
 The feedback is a list of Acknowledgments. This list also contains the NACKs.
 
 ## Tunning Parameters
+The `RefCongLevel` affects the stability of the target rate.
+Default is 10ms. Increasing it can help to achieve a more stable target rate.
 
 Reactiveness of Gradual Update Mode:
 * **KAPPA**: General reactivness
@@ -51,3 +53,7 @@ Reactiveness of Gradual Update Mode:
 * **ETA**: Reactiveness towards current congestion change
   * ETA < 2 -> less reactive
   * ETA > 2 -> more reactive
+
+### Effects of pacing
+NADA requires a paced media stream to achieve a stable target rate.
+If the delay measurements contain latency spikes caused by bursts, NADA might produce a very unstable target rate.
