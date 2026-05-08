@@ -7,6 +7,7 @@ import (
 type SenderOnly struct {
 	sender   *Sender
 	receiver *Receiver
+	lastRTT  time.Duration
 }
 
 func NewSenderOnly(config Config) SenderOnly {
@@ -27,21 +28,32 @@ func (s *SenderOnly) OnAcks(rtt time.Duration, acks []Acknowledgment) (newRate u
 	// register packets
 	for _, ack := range acks {
 		if ack.Arrived {
-			// register packet at receiver part
-			s.receiver.PacketArrived(ack.SeqNr, ack.Departure, ack.Arrival, ack.SizeBit, ack.Marked)
-
-			// register at sender part. Necassary for correct ratios
-			s.sender.PacketDelivered(ack.SeqNr, uint64(ack.Arrival.UnixMicro()), ack.SizeBit, ack.Marked)
-
+			s.OnAck(ack.SeqNr, ack.Departure, ack.Arrival, ack.SizeBit, ack.Marked)
 		} else {
-			// register loss
-			s.sender.LostPacket(ack.SeqNr, uint64(ack.Departure.UnixMicro()))
+			s.OnLoss(ack.SeqNr, ack.Departure)
 		}
 	}
+	s.UpdateRTT(rtt)
+	return s.UpdateTargetRate()
+}
 
-	// calc new rate
+func (s *SenderOnly) OnAck(seqNr uint64, departure, arrival time.Time, sizeBit uint64, marked bool) {
+	// register packet at receiver part
+	s.receiver.PacketArrived(seqNr, departure, arrival, sizeBit, marked)
+
+	// register at sender part. Necassary for correct ratios
+	s.sender.PacketDelivered(seqNr, uint64(arrival.UnixMicro()), sizeBit, marked)
+}
+
+func (s *SenderOnly) OnLoss(seqNr uint64, departure time.Time) {
+	s.sender.LostPacket(seqNr, uint64(departure.UnixMicro()))
+}
+
+func (s *SenderOnly) UpdateRTT(rtt time.Duration) {
+	s.lastRTT = rtt
+}
+
+func (s *SenderOnly) UpdateTargetRate() uint64 {
 	internalFeedback := s.receiver.GenerateFeedback()
-	newRate = s.sender.FeedbackReport(internalFeedback, rtt)
-
-	return newRate
+	return s.sender.FeedbackReport(internalFeedback, s.lastRTT)
 }
