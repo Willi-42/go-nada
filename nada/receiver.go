@@ -14,6 +14,9 @@ type Receiver struct {
 	recvRate     uint64 // receiving rate (r_recv)
 	lastArraival uint64 // timestamp of last arrived packet
 
+	staticOffset     uint64
+	chechedForOffset bool
+
 	config   *Config
 	logWin   *windows.LogWindow
 	delayWin *windows.DelayWindow // used to filter delay samples
@@ -43,11 +46,17 @@ func (r *Receiver) PacketArrived(
 	packetSizeBit uint64,
 	marked bool,
 ) {
-	sentTs := uint64(departure.UnixMicro())
-	recvTs := uint64(arrival.UnixMicro())
-
 	// current one-way delay (d_fwd)
-	oneWayDelay := recvTs - sentTs
+	rawDiff := arrival.Sub(departure).Microseconds()
+
+	// if we have negative time offset
+	if !r.chechedForOffset && rawDiff < 0 {
+		r.chechedForOffset = true
+		r.staticOffset = uint64(-rawDiff) + 100_000 // add 100ms to be sure
+	}
+	oneWayDelay := uint64(rawDiff) + r.staticOffset
+
+	recvTs := uint64(arrival.UnixMicro())
 
 	// update base delay
 	oldBase := r.baseDelay
