@@ -12,8 +12,12 @@ NADA RFC: [RFC 8698](https://www.rfc-editor.org/rfc/rfc8698)
   * Can be reactivated by setting `UseDefaultGradualUpdates` to true.
 * Maximal increment of the target rate in Gradual Update Mode is clipped to an increase of `MaxGradualUpdateFactor`.
 
-**Loss detection**
+### Loss detection
 * This NADA implementation registers losses at the sender side. For example, through NACKs. In comparison, RFC 8689 detects losses purely through sequence number skips.
+
+### Clock skew
+If NADA observes a packet whose receive timestamp is earlier than its send timestamp, it treats this as clock skew between sender and receiver.
+Since packets cannot arrive before they are sent, the receiver applies a fixed positive offset to all subsequent delay estimats, so they remains non-negative.
 
 ## Versions
 * **Split NADA**: NADA runs at sender and at the reciever.
