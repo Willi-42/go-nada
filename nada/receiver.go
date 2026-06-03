@@ -14,8 +14,7 @@ type Receiver struct {
 	recvRate     uint64 // receiving rate (r_recv)
 	lastArraival uint64 // timestamp of last arrived packet
 
-	staticOffset     uint64
-	chechedForOffset bool
+	staticOffset uint64
 
 	config   *Config
 	logWin   *windows.LogWindow
@@ -50,9 +49,8 @@ func (r *Receiver) PacketArrived(
 	rawDiff := arrival.Sub(departure).Microseconds()
 
 	// if we have negative time offset
-	if !r.chechedForOffset && rawDiff < 0 {
-		r.chechedForOffset = true
-		r.staticOffset = uint64(-rawDiff) + 100_000 // add 100ms to be sure
+	if rawDiff+int64(r.staticOffset) < 0 {
+		r.staticOffset = uint64(-rawDiff) + 50_000 // add 50ms to be sure
 
 		r.baseDelay = math.MaxUint64 // recompute base delay
 	}
