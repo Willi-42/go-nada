@@ -53,6 +53,8 @@ func (r *Receiver) PacketArrived(
 	if !r.chechedForOffset && rawDiff < 0 {
 		r.chechedForOffset = true
 		r.staticOffset = uint64(-rawDiff) + 100_000 // add 100ms to be sure
+
+		r.baseDelay = math.MaxUint64 // recompute base delay
 	}
 	oneWayDelay := uint64(rawDiff) + r.staticOffset
 
